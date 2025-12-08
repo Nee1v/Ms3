@@ -489,7 +489,54 @@ def pay_borrower_fines(card_id):
     finally:
         if conn:
             conn.close()
+def getBooksCheckedOut(search=""):
+    """
+    Returns a list of all books currently checked out.
+    Optionally filter by a search string in the title or ISBN.
+    """
+    conn = _get_db_connection()
+    if conn is None:
+        return []
 
+    try:
+        cursor = conn.cursor()
+
+        # Base query to get checked-out books
+        query = """
+        SELECT BL.Loan_id, B.Isbn, B.Title, BL.Card_id, BL.Due_date
+        FROM BOOK_LOANS BL
+        JOIN BOOK B ON BL.Isbn = B.Isbn
+        WHERE BL.Date_in IS NULL
+        """
+        params = []
+
+        # Optional search filter
+        if search:
+            query += " AND (B.Title LIKE ? OR B.Isbn LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%"])
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        # Convert results to list of dicts
+        results = []
+        for row in rows:
+            results.append({
+                "Loan_id": row[0],
+                "Isbn": str(row[1]).zfill(10),  # preserve leading zeroes
+                "Title": row[2],
+                "Card_id": row[3],
+                "Due_date": row[4]
+            })
+
+        return results
+
+    except sqlite3.Error as e:
+        print(f"SQLite error: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 # --- Main block for testing ---
 if __name__ == "__main__":
