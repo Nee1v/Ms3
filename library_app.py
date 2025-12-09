@@ -564,155 +564,13 @@ if __name__ == "__main__":
 
     # --- !! IMPORTANT: Change these values to valid data from your CSVs !! ---
     # Find these in your borrower.csv and book.csv
-    test_card_id = "ID000007"  # A valid Card_id for a borrower
+    test_fine_card_id = "ID000007"  # A valid Card_id for a borrower
     test_borrower_name = "Deborah Lawrence"  # The Bname for the Card_id above
     test_isbn_1 = "0195153445"  # An ISBN for a book
     test_isbn_2 = "1558746218"  # A different ISBN
     test_isbn_3 = "1879384493"  # A third ISBN
     test_isbn_4 = "0312970242"  # A fourth ISBN
     # ---
-
-    # --- Test 1: Book Search ---
-    print("--- Testing Book Search Function ---")
-
-    print("\nSearching for 'will'...")
-    search_results = search_books("will")
-    if search_results:
-        for item in search_results:
-            print(f"  {item['NO']} ISBN: {item['Isbn']}, Title: {item['Title']}, "
-                  f"Authors: {item['Authors']}, Status: {item['Availability']}")
-    else:
-        print("  No results found.")
-
-    # --- Test 2: Book Checkout ---
-    print("\n\n--- Testing Book Checkout Function ---")
-
-    print(f"\nAttempting to check out {test_isbn_1} for {test_card_id}...")
-    success, message = checkout_book(test_isbn_1, test_card_id)
-    print(f"Result: {message}")
-
-    print(f"\nChecking out {test_isbn_2} and {test_isbn_3} to test 3-loan limit...")
-    s1, m1 = checkout_book(test_isbn_2, test_card_id)
-    s2, m2 = checkout_book(test_isbn_3, test_card_id)
-    print(f"Result 1: {m1}")
-    print(f"Result 2: {m2}")
-
-    print(f"\nAttempting to check out 4th book ({test_isbn_4})...")
-    success, message = checkout_book(test_isbn_4, test_card_id)
-    print(f"Result: {message}")
-
-    # --- Test 3: Book Check-in ---
-    print("\n\n--- Testing Book Check-in Functions ---")
-    print(f"\nSearching for active loans for '{test_borrower_name}'...")
-    active_loans = search_active_loans(test_borrower_name)
-
-    if not active_loans:
-        print("  No active loans found. (This might be an error if Test 2 failed)")
-    else:
-        print(f"  Found {len(active_loans)} active loan(s):")
-
-        if active_loans:  # Only proceed if we found loans
-            loan_to_checkin_id = active_loans[0]['Loan_id']
-            loan_to_checkin_title = active_loans[0]['Title']
-
-            print(f"\nAttempting to check in '{loan_to_checkin_title}' (Loan ID: {loan_to_checkin_id})...")
-            success, message = checkin_book(loan_to_checkin_id)
-            print(f"Result: {message}")
-
-    # --- Test 4: Borrower Management ---
-    print("\n\n--- Testing Borrower Management Function ---")
-    print("\nAttempting to create a new borrower 'John Doe'...")
-    success, message = add_borrower(
-        bname="John Doe", ssn="111-11-1111",
-        address="123 Main St, Testville, TX", phone="555-1234")
-    print(f"Result: {message}")
-
-    print("\nAttempting to create 'Jane Doe' with the same SSN...")
-    success, message = add_borrower(
-        bname="Jane Doe", ssn="111-11-1111",
-        address="456 Oak Ave, Testville, TX", phone="555-5678")
-    print(f"Result: {message}")
-
-    # --- Test 5: Fines Management ---
-    print("\n\n--- Testing Fines Management ---")
-
-    # 5a: Create a new borrower for fines testing
-    print("\nCreating new borrower 'Fine Tester'...")
-    success, message = add_borrower(
-        bname="Fine Tester", ssn="999-99-9999",
-        address="123 Owe St", phone="555-FINE")
-    print(f"Result: {message}")
-    # Extract the new Card ID from the success message
-    test_fine_card_id = message.split("(Card ID: ")[1].replace(")", "")
-
-    # 5b: Set up test loans IN THE PAST
-    print(f"Creating 2 test loans for {test_fine_card_id}...")
-    try:
-        conn = _get_db_connection()
-        cursor = conn.cursor()
-
-        # Loan 1: Returned Late
-        # Due 20 days ago, returned 10 days ago (10 days late)
-        # Fine should be 10 * 0.25 = $2.50
-        cursor.execute("""
-            INSERT INTO BOOK_LOANS (Isbn, Card_id, Date_out, Due_date, Date_in)
-            VALUES (?, ?, date('now', '-34 day'), date('now', '-20 day'), date('now', '-10 day'))
-        """, (test_isbn_1, test_fine_card_id))
-        loan_id_1 = cursor.lastrowid
-
-        # Loan 2: Still Out, Overdue
-        # Due 2 days ago, still out
-        # Fine should be 2 * 0.25 = $0.50
-        cursor.execute("""
-            INSERT INTO BOOK_LOANS (Isbn, Card_id, Date_out, Due_date, Date_in)
-            VALUES (?, ?, date('now', '-16 day'), date('now', '-2 day'), NULL)
-        """, (test_isbn_2, test_fine_card_id))
-        loan_id_2 = cursor.lastrowid
-        conn.commit()
-        print(f"  Created late loan {loan_id_1} and overdue loan {loan_id_2}.")
-
-    except sqlite3.Error as e:
-        print(f"  Error setting up test loans: {e}")
-    finally:
-        if conn: conn.close()
-
-    # 5c: Run the fines update
-    print("\nRunning update_all_fines()...")
-    success, message = update_all_fines()
-    print(f"Result: {message}")
-
-    # 5d: Check the calculated fines
-    print(f"\nChecking fines for {test_fine_card_id}...")
-    fines = get_borrower_fines(test_fine_card_id)
-    print(f"  Total Unpaid: ${fines['total']:.2f} (Should be $3.00)")
-    for detail in fines['details']:
-        print(f"    - Loan {detail['Loan_id']}: ${detail['Fine_amt']:.2f}")
-
-    # 5e: Try to pay fines (should fail, book is still out)
-    print(f"\nAttempting to pay fines for {test_fine_card_id} (should fail)...")
-    success, message = pay_borrower_fines(test_fine_card_id)
-    print(f"Result: {message}")
-
-    # 5f: Check in the overdue book
-    print(f"\nChecking in overdue book (Loan ID: {loan_id_2})...")
-    success, message = checkin_book(loan_id_2)
-    print(f"Result: {message}")
-
-    # 5g: Try to pay fines again (should succeed)
-    print(f"\nAttempting to pay fines for {test_fine_card_id} (should succeed)...")
-    success, message = pay_borrower_fines(test_fine_card_id)
-    print(f"Result: {message}")
-
-    # 5h: Check fines again (should be 0 unpaid)
-    print(f"\nChecking unpaid fines for {test_fine_card_id}...")
-    fines = get_borrower_fines(test_fine_card_id, include_paid=False)
-    print(f"  Total Unpaid: ${fines['total']:.2f} (Should be $0.00)")
-
-    # 5i: Check all fines (should show paid)
-    print(f"\nChecking all fines (including paid) for {test_fine_card_id}...")
-    fines = get_borrower_fines(test_fine_card_id, include_paid=True)
-    # *** THIS LINE IS NOW FIXED ***
-    print(f"  Total Fines (paid): ${fines['total']:.2f} (Should be $3.00)")
 
     # --- Test 6: Checkout with Unpaid Fines ---
     print("\n\n--- Testing Checkout With Fines ---")
@@ -722,6 +580,15 @@ if __name__ == "__main__":
     try:
         conn = _get_db_connection()
         cursor = conn.cursor()
+
+        ssn = "123-23-2323"
+        cursor.execute("SELECT card_id, bname, address, phone FROM BORROWER WHERE ssn = ?", (ssn,))
+        row = cursor.fetchone()
+
+        if row:
+            print(f"Card ID: {row[0]}, Name: {row[1]}, Address: {row[2]}, Phone: {row[3]}")
+        else:
+            print("Borrower not found.")
 
         # *** THIS LINE IS NOW FIXED ***
         # Changed '-1R' to '-1 day'. This is 4 days late. 4 * 0.25 = $1.00

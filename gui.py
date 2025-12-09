@@ -202,19 +202,262 @@ class LoansPage(tk.Frame):
         self.load_available_books()
         self.load_checked_out_books()
 
+#4 my tr maan
 class BorrowersPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
-        tk.Label(self, text="Borrower Management", font=("Arial", 18)).pack(pady=10)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
-        #TODO: Add GUI for adding new borrowers
 
+        tk.Label(self, text="Borrower Management", font=("Arial", 18)).pack(pady=10)
+
+        form_frame = tk.Frame(self)
+        form_frame.pack(pady=10)
+
+        # --- Input Fields ---
+        tk.Label(form_frame, text="Full Name:").grid(row=0, column=0, sticky="e")
+        self.name_entry = tk.Entry(form_frame)
+        self.name_entry.grid(row=0, column=1)
+
+        tk.Label(form_frame, text="SSN:").grid(row=1, column=0, sticky="e")
+        self.ssn_entry = tk.Entry(form_frame)
+        self.ssn_entry.grid(row=1, column=1)
+
+        tk.Label(form_frame, text="Address:").grid(row=2, column=0, sticky="e")
+        self.address_entry = tk.Entry(form_frame)
+        self.address_entry.grid(row=2, column=1)
+
+        tk.Label(form_frame, text="Phone:").grid(row=3, column=0, sticky="e")
+        self.phone_entry = tk.Entry(form_frame)
+        self.phone_entry.grid(row=3, column=1)
+
+        # --- Buttons ---
+        tk.Button(self, text="Create Borrower", command=self.create_borrower).pack(pady=10)
+        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=5)
+
+        # --- Status Message ---
+        self.status_label = tk.Label(self, text="", fg="red")
+        self.status_label.pack(pady=5)
+
+    def create_borrower(self):
+        name = self.name_entry.get().strip()
+        ssn = self.ssn_entry.get().strip()
+        address = self.address_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+
+        #1. Validate required fields (NOT NULL)
+        if not name or not ssn or not address:
+            self.status_label.config(
+                text="Error: Name, SSN, and Address are required.",
+                fg="red"
+            )
+            return
+
+        try:
+            import sqlite3
+            conn = sqlite3.connect("library.db")
+            cur = conn.cursor()
+
+            #2. Enforce ONE borrower per SSN
+            cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
+            if cur.fetchone():
+                self.status_label.config(
+                    text="Error: A borrower with this SSN already exists.",
+                    fg="red"
+                )
+                conn.close()
+                return
+
+            #3. Auto-generate new card_id in the format ID000001
+            cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
+            result = cur.fetchone()[0]
+            new_number = int(result) + 1 if result else 1
+            new_card_id = f"ID{new_number:06d}"  # ID + 6-digit zero-padded number
+
+            #4. Insert new borrower
+            cur.execute("""
+                INSERT INTO BORROWER (card_id, bname, address, phone, ssn)
+                VALUES (?, ?, ?, ?, ?)
+            """, (new_card_id, name, address, phone, ssn))
+
+            conn.commit()
+            conn.close()
+
+            # 5. Success message + clear form
+            self.status_label.config(
+                text=f"Borrower created successfully. Card No: {new_card_id}",
+                fg="green"
+            )
+
+            self.name_entry.delete(0, tk.END)
+            self.ssn_entry.delete(0, tk.END)
+            self.address_entry.delete(0, tk.END)
+            self.phone_entry.delete(0, tk.END)
+
+        except Exception as e:
+            self.status_label.config(
+                text=f"Database Error: {str(e)}",
+                fg="red"
+            )
+
+
+
+#-------------------- Fines Page --------------------
 class FinesPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
+
         tk.Label(self, text="Fines Management", font=("Arial", 18)).pack(pady=10)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
-        #TODO: Add GUI for viewing and paying fines
+
+        search_frame = tk.Frame(self)
+        search_frame.pack(pady=5)
+
+        tk.Label(search_frame, text="Borrower ID:").grid(row=0, column=0)
+        self.card_entry = tk.Entry(search_frame)
+        self.card_entry.grid(row=0, column=1)
+
+        tk.Label(search_frame, text="Borrower Name:").grid(row=0, column=2)
+        self.name_entry = tk.Entry(search_frame)
+        self.name_entry.grid(row=0, column=3)
+
+        tk.Button(search_frame, text="Search Fines", command=self.search_fines).grid(row=0, column=4, padx=5)
+        tk.Button(search_frame, text="Refresh Fines", command=self.refresh_fines).grid(row=0, column=5, padx=5)
+
+        # --- Table ---
+        self.tree = ttk.Treeview(self, columns=("card", "name", "total"), show="headings")
+        self.tree.heading("card", text="Card ID")
+        self.tree.heading("name", text="Borrower Name")
+        self.tree.heading("total", text="Total Fine ($)")
+        self.tree.pack(pady=10)
+
+        tk.Button(self, text="Pay Selected Fine", command=self.pay_fine).pack(pady=5)
+        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=5)
+
+        self.message = tk.Label(self, text="", fg="red")
+        self.message.pack(pady=5)
+
+    # ---------------- REFRESH FINES ----------------
+    def refresh_fines(self):
+        import sqlite3, datetime
+        conn = sqlite3.connect("library.db")
+        cur = conn.cursor()
+
+        today = datetime.date.today()
+
+        cur.execute("""
+            SELECT loan_id, due_date, date_in 
+            FROM BOOK_LOANS
+            WHERE due_date IS NOT NULL
+        """)
+        loans = cur.fetchall()
+
+        for loan_id, due, returned in loans:
+            due_date = datetime.date.fromisoformat(due)
+
+            if returned:
+                returned_date = datetime.date.fromisoformat(returned)
+                late_days = (returned_date - due_date).days
+            else:
+                late_days = (today - due_date).days
+
+            if late_days > 0:
+                fine_amt = round(late_days * 0.25, 2)
+
+                cur.execute("SELECT paid FROM FINES WHERE loan_id = ?", (loan_id,))
+                row = cur.fetchone()
+
+                if row:
+                    if row[0] == 0:                     # unpaid → update only
+                        cur.execute("""
+                            UPDATE FINES SET fine_amt = ?
+                            WHERE loan_id = ?
+                        """, (fine_amt, loan_id))
+                else:
+                    cur.execute("""
+                        INSERT INTO FINES (loan_id, fine_amt, paid)
+                        VALUES (?, ?, 0)
+                    """, (loan_id, fine_amt))
+
+        conn.commit()
+        conn.close()
+        self.message.config(text="Fines refreshed successfully.", fg="green")
+        self.search_fines()
+
+    # ---------------- SEARCH FINES ----------------
+    def search_fines(self):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        import sqlite3
+        conn = sqlite3.connect("library.db")
+        cur = conn.cursor()
+
+        card = self.card_entry.get().strip()
+        name = self.name_entry.get().strip()
+
+        query = """
+            SELECT B.card_id, B.bname, SUM(F.fine_amt)
+            FROM BORROWER B
+            JOIN BOOK_LOANS L ON B.card_id = L.card_id
+            JOIN FINES F ON L.loan_id = F.loan_id
+            WHERE F.paid = 0
+        """
+
+        params = []
+
+        if card:
+            query += " AND B.card_id = ?"
+            params.append(card)
+
+        if name:
+            query += " AND B.bname LIKE ?"
+            params.append(f"%{name}%")
+
+        query += " GROUP BY B.card_id, B.bname"
+
+        cur.execute(query, params)
+        results = cur.fetchall()
+        conn.close()
+
+        for card_id, bname, total in results:
+            self.tree.insert("", "end", values=(card_id, bname, f"{total:.2f}"))
+
+    # ---------------- PAY FINE ----------------
+    def pay_fine(self):
+        selected = self.tree.selection()
+        if not selected:
+            self.message.config(text="Select a borrower to pay fine.")
+            return
+
+        card_id = self.tree.item(selected[0])["values"][0]
+
+        import sqlite3
+        conn = sqlite3.connect("library.db")
+        cur = conn.cursor()
+
+        #Do not allow paying if book not returned
+        cur.execute("""
+            SELECT 1 FROM BOOK_LOANS L
+            JOIN FINES F ON L.loan_id = F.loan_id
+            WHERE L.card_id = ? AND L.date_in IS NULL AND F.paid = 0
+        """, (card_id,))
+        if cur.fetchone():
+            self.message.config(text="Error: Cannot pay fine for books not yet returned.")
+            conn.close()
+            return
+
+        # Mark all unpaid fines as paid
+        cur.execute("""
+            UPDATE FINES SET paid = 1
+            WHERE loan_id IN (
+                SELECT L.loan_id FROM BOOK_LOANS L
+                JOIN FINES F ON L.loan_id = F.loan_id
+                WHERE L.card_id = ? AND F.paid = 0
+            )
+        """, (card_id,))
+
+        conn.commit()
+        conn.close()
+        self.message.config(text="Fine paid successfully.", fg="green")
+        self.search_fines()
 
 
 # -------------------- Run the App --------------------
