@@ -490,6 +490,31 @@ def pay_borrower_fines(card_id):
         if conn:
             conn.close()
 
+#Simply returns current borrower if there is one
+def get_borrower_for_book(isbn):
+    conn = _get_db_connection()
+    if conn is None:
+        return None
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT Card_id 
+            FROM BOOK_LOANS
+            WHERE Isbn = ? AND Date_in IS NULL
+        """, (isbn,))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+        return None
+    except sqlite3.Error as e:
+        print(f"Database error in get_borrower_for_book: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 #Added this function to be able to see what books are checked out in checkout/in page
 def getBooksCheckedOut(search=""):
     conn = _get_db_connection()
