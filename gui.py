@@ -576,35 +576,114 @@ class BorrowersPage(tk.Frame):
 #-------------------- Fines Page --------------------
 class FinesPage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
+        super().__init__(parent, bg=theme.BG_COLOR)
 
-        tk.Label(self, text="Fines Management", font=("Arial", 18)).pack(pady=10)
+        # Top bar
+        topBar = tk.Frame(self, bg=theme.BG_COLOR)
+        topBar.pack(fill="x", pady=10, padx=10)
 
-        search_frame = tk.Frame(self)
-        search_frame.pack(pady=5)
+        tk.Label(
+            topBar,
+            text="Fines Management",
+            font=theme.FONT_TITLE,
+            bg=theme.BG_COLOR,
+            fg="white"
+        ).pack(side="left")
 
-        tk.Label(search_frame, text="Borrower ID:").grid(row=0, column=0)
-        self.card_entry = tk.Entry(search_frame)
-        self.card_entry.grid(row=0, column=1)
+        ttk.Button(
+            topBar,
+            text="← Back to Home",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(HomePage)
+        ).pack(side="right")
 
-        tk.Label(search_frame, text="Borrower Name:").grid(row=0, column=2)
-        self.name_entry = tk.Entry(search_frame)
-        self.name_entry.grid(row=0, column=3)
+        # Card container
+        card = tk.Frame(self, bg=theme.CARD_BG, padx=20, pady=15)
+        card.pack(fill="both", expand=True, padx=15, pady=10)
 
-        tk.Button(search_frame, text="Search Fines", command=self.search_fines).grid(row=0, column=4, padx=5)
-        tk.Button(search_frame, text="Refresh Fines", command=self.refresh_fines).grid(row=0, column=5, padx=5)
+        search_frame = tk.Frame(card, bg=theme.CARD_BG)
+        search_frame.pack(pady=5, fill="x")
+
+        tk.Label(
+            search_frame,
+            text="Borrower ID:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        self.card_entry = tk.Entry(
+            search_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.card_entry.grid(row=0, column=1, pady=5)
+
+        tk.Label(
+            search_frame,
+            text="Borrower Name:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=0, column=2, padx=5, pady=5, sticky="e")
+        self.name_entry = tk.Entry(
+            search_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.name_entry.grid(row=0, column=3, pady=5)
+
+        ttk.Button(
+            search_frame,
+            text="Search Fines",
+            style="Accent.TButton",
+            command=self.search_fines
+        ).grid(row=0, column=4, padx=5)
+
+        ttk.Button(
+            search_frame,
+            text="Refresh Fines",
+            style="Accent.TButton",
+            command=self.refresh_fines
+        ).grid(row=0, column=5, padx=5)
 
         # --- Table ---
-        self.tree = ttk.Treeview(self, columns=("card", "name", "total"), show="headings")
+        self.tree = ttk.Treeview(
+            card,
+            columns=("card", "name", "total"),
+            show="headings",
+            style="Treeview"
+        )
         self.tree.heading("card", text="Card ID")
         self.tree.heading("name", text="Borrower Name")
         self.tree.heading("total", text="Total Fine ($)")
-        self.tree.pack(pady=10)
+        self.tree.column("card", width=120, anchor="center")
+        self.tree.column("name", width=220, anchor="w")
+        self.tree.column("total", width=120, anchor="center")
+        self.tree.pack(pady=10, fill="both", expand=True)
 
-        tk.Button(self, text="Pay Selected Fine", command=self.pay_fine).pack(pady=5)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=5)
+        ttk.Button(
+            card,
+            text="Pay Selected Fine",
+            style="Accent.TButton",
+            command=self.pay_fine
+        ).pack(pady=5)
 
-        self.message = tk.Label(self, text="", fg="red")
+        self.message = tk.Label(
+            card,
+            text="",
+            bg=theme.CARD_BG,
+            fg="red",
+            font=theme.FONT_BODY
+        )
+        self.message.pack(pady=5)
         self.message.pack(pady=5)
 
     # ---------------- REFRESH FINES ----------------
