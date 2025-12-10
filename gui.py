@@ -21,18 +21,280 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
         #Dictionary to hold pages / frames
         self.frames = {}
-        for F in (HomePage, SearchPage, LoansPage, BorrowersPage, FinesPage):
+        for F in (LoginPage, SignUpPage, HomePage, SearchPage, LoansPage, BorrowersPage, FinesPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(HomePage)
+        self.show_frame(LoginPage)
 
     def show_frame(self, page_class):
         frame = self.frames[page_class]
         frame.tkraise()
 
 #-------------------- Pages --------------------
+
+# -------------------- Login Page --------------------
+class LoginPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
+
+        # Centering container
+        outer = tk.Frame(self, bg=theme.BG_COLOR)
+        outer.pack(expand=True)
+
+        # Card-style container
+        card = tk.Frame(
+            outer,
+            bg=theme.CARD_BG,
+            padx=30,
+            pady=30,
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        card.pack()
+
+        # Title
+        tk.Label(
+            card,
+            text="Login",
+            font=theme.FONT_TITLE,
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN
+        ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
+        # Username label + entry
+        tk.Label(
+            card,
+            text="Username:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=1, column=0, sticky="e", padx=5, pady=5)
+
+        self.username_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.username_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+        # "login:" field -> treat as password (for future)
+        tk.Label(
+            card,
+            text="Password:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
+
+        self.password_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            show="*"
+        )
+        self.password_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+        # Login button – for now, always goes to HomePage
+        ttk.Button(
+            card,
+            text="Login",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(HomePage)
+        ).grid(row=3, column=0, columnspan=2, pady=(15, 5), sticky="ew")
+
+        # Sign Up button – goes to SignUpPage
+        ttk.Button(
+            card,
+            text="Sign Up",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(SignUpPage)
+        ).grid(row=4, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+
+
+# -------------------- Sign Up Page --------------------
+
+class SignUpPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
+
+        # validator for digits-only fields (SSN, Phone)
+        vcmd_digits = (self.register(self._validate_digits), "%P")
+
+        # Centering container
+        outer = tk.Frame(self, bg=theme.BG_COLOR)
+        outer.pack(expand=True)
+
+        # Card-style container
+        card = tk.Frame(
+            outer,
+            bg=theme.CARD_BG,
+            padx=30,
+            pady=30,
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        card.pack()
+
+        # Title
+        tk.Label(
+            card,
+            text="Sign Up",
+            font=theme.FONT_TITLE,
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN
+        ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
+        # Instruction
+        tk.Label(
+            card,
+            text="Enter the following:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MUTED,
+            font=theme.FONT_BODY
+        ).grid(row=1, column=0, columnspan=2, pady=(0, 10))
+
+        # Full Name
+        tk.Label(
+            card,
+            text="Full Name:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.fullname_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.fullname_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+        # SSN (numbers only)
+        tk.Label(
+            card,
+            text="SSN:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        self.ssn_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            validate="key",
+            validatecommand=vcmd_digits
+        )
+        self.ssn_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
+
+        # Address
+        tk.Label(
+            card,
+            text="Address:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=4, column=0, sticky="e", padx=5, pady=5)
+        self.address_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.address_entry.grid(row=4, column=1, sticky="w", padx=5, pady=5)
+
+        # Phone (numbers only)
+        tk.Label(
+            card,
+            text="Phone:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=5, column=0, sticky="e", padx=5, pady=5)
+        self.phone_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            validate="key",
+            validatecommand=vcmd_digits
+        )
+        self.phone_entry.grid(row=5, column=1, sticky="w", padx=5, pady=5)
+
+        # (Placeholder) Create Account button – does nothing DB-wise yet
+        ttk.Button(
+            card,
+            text="Create Account",
+            style="Accent.TButton",
+            command=self._placeholder_signup
+        ).grid(row=6, column=0, columnspan=2, pady=(15, 5), sticky="ew")
+
+        # Back to Login
+        ttk.Button(
+            card,
+            text="← Back to Login",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(LoginPage)
+        ).grid(row=7, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+
+    def _validate_digits(self, new_value: str) -> bool:
+        """
+        Allow only digits (or empty string) for SSN/Phone entries.
+        new_value is the would-be contents of the entry after the keypress.
+        """
+        return new_value.isdigit() or new_value == ""
+
+    def _placeholder_signup(self):
+        """
+        Placeholder for sign up logic.
+        Later you can hook this into library.add_borrower or a USER table.
+        """
+        if not (
+            self.fullname_entry.get().strip()
+            and self.ssn_entry.get().strip()
+            and self.address_entry.get().strip()
+            and self.phone_entry.get().strip()
+        ):
+            messagebox.showerror("Error", "Please fill out all fields.", parent=self)
+            return
+
+        messagebox.showinfo(
+            "Sign Up",
+            "Sign up logic not implemented yet.\n(Fields validate correctly though!)",
+            parent=self
+        )
+
+# -------------------- Home Page --------------------
 
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
@@ -77,6 +339,17 @@ class HomePage(tk.Frame):
         nav_button("📚  Manage Loans", LoansPage)
         nav_button("👤  Manage Borrowers", BorrowersPage)
         nav_button("💸  Manage Fines", FinesPage)
+
+                # Logout button – return to Login page
+        ttk.Button(
+            content_frame,
+            text="Logout",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(LoginPage)
+        ).pack(fill="x", pady=(12, 0), ipady=3)
+
+
+        
 
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
