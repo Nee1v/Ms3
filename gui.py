@@ -140,6 +140,7 @@ class SearchPage(tk.Frame):
         self.tree.pack(fill="both", expand=True)
 
         self.tree.bind("<<TreeviewSelect>>", self.on_book_selected)
+        self.tree.bind("<Double-1>", self.copy_isbn_from_row)
 
     #Function that actually performs search is in library_app.py
     def perform_search(self):
@@ -180,6 +181,25 @@ class SearchPage(tk.Frame):
         except Exception:
             # if LoansPage isn't available for some reason, just ignore
             pass
+    def copy_isbn_from_row(self, event):
+        selected = self.tree.selection()
+        if not selected:
+            return
+
+        values = self.tree.item(selected[0])["values"]
+        if not values:
+            return
+
+        raw_isbn = str(values[0]).strip()
+        isbn_str = raw_isbn.zfill(10)
+
+        # Copy to clipboard
+        self.clipboard_clear()
+        self.clipboard_append(isbn_str)
+
+        # Give small visual feedback in title bar
+        self.controller.title(f"Copied ISBN: {isbn_str}")
+        self.after(1200, lambda: self.controller.title("Library Management System"))
 
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
