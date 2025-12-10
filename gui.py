@@ -394,6 +394,9 @@ class BorrowersPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
 
+        self.controller = controller
+        self.last_card_id = None # To track last created borrower
+
         # Top bar
         topBar = tk.Frame(self, bg=theme.BG_COLOR)
         topBar.pack(fill="x", pady=10, padx=10)
@@ -506,15 +509,18 @@ class BorrowersPage(tk.Frame):
             text="",
             bg=theme.CARD_BG,
             fg="red",
-            font=theme.FONT_BODY
+            font=theme.FONT_BODY,
+            cursor="hand2"   # hand cursor to indicate clickable
         )
         self.status_label.pack(pady=5)
+        self.status_label.bind("<Button-1>", self.copy_card_to_clipboard)
 
     def create_borrower(self):
         name = self.name_entry.get().strip()
         ssn = self.ssn_entry.get().strip()
         address = self.address_entry.get().strip()
         phone = self.phone_entry.get().strip()
+
 
         #1. Validate required fields (NOT NULL)
         if not name or not ssn or not address:
@@ -555,10 +561,29 @@ class BorrowersPage(tk.Frame):
             conn.close()
 
             # 5. Success message + clear form
+            self.last_card_id = new_card_id
+
             self.status_label.config(
-                text=f"Borrower created successfully. Card No: {new_card_id}",
+                text=f"Borrower created successfully. Card No: {new_card_id} (click to copy)",
                 fg="green"
             )
+
+            # prefill card id in LoansPage if possible
+            try:
+                loans_page = self.controller.frames[LoansPage]
+                loans_page.card_entry.delete(0, tk.END)
+                loans_page.card_entry.insert(0, new_card_id)
+            except Exception:
+                # if LoansPage not initialized for some reason, just ignore
+                pass
+            
+            # prefill card id in FinesPage if possible
+            try:
+                fines_page = self.controller.frames[FinesPage]
+                fines_page.card_entry.delete(0, tk.END)
+                fines_page.card_entry.insert(0, new_card_id)
+            except Exception:
+                pass
 
             self.name_entry.delete(0, tk.END)
             self.ssn_entry.delete(0, tk.END)
@@ -571,8 +596,22 @@ class BorrowersPage(tk.Frame):
                 fg="red"
             )
 
+    def copy_card_to_clipboard(self, event=None):
+        """Copy the last created Card ID to the clipboard when the status label is clicked."""
+        if not self.last_card_id:
+            # nothing to copy yet
+            return
 
+        # copy to system clipboard
+        self.clipboard_clear()
+        self.clipboard_append(self.last_card_id)
 
+        # small visual feedback
+        self.status_label.config(
+            text=f"Card No: {self.last_card_id} copied to clipboard!",
+            fg="green"
+        )
+    
 #-------------------- Fines Page --------------------
 class FinesPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -735,6 +774,7 @@ class FinesPage(tk.Frame):
 
     # ---------------- SEARCH FINES ----------------
     def search_fines(self):
+        # clear old rows
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -745,25 +785,34 @@ class FinesPage(tk.Frame):
         card = self.card_entry.get().strip()
         name = self.name_entry.get().strip()
 
-        query = """
+        # base SELECT
+        base = """
             SELECT B.card_id, B.bname, SUM(F.fine_amt)
             FROM BORROWER B
             JOIN BOOK_LOANS L ON B.card_id = L.card_id
             JOIN FINES F ON L.loan_id = F.loan_id
-            WHERE F.paid = 0
         """
 
         params = []
 
-        if card:
-            query += " AND B.card_id = ?"
-            params.append(card)
+        # build WHERE depending on which fields are filled
+        if card and name:
+            # match EITHER the card OR the name
+            where_clause = "WHERE F.paid = 0 AND (B.card_id = ? OR B.bname LIKE ?)"
+            params = [card, f"%{name}%"]
+        elif card:
+            where_clause = "WHERE F.paid = 0 AND B.card_id = ?"
+            params = [card]
+        elif name:
+            where_clause = "WHERE F.paid = 0 AND B.bname LIKE ?"
+            params = [f"%{name}%"]
+        else:
+            # no filters → all unpaid fines
+            where_clause = "WHERE F.paid = 0"
 
-        if name:
-            query += " AND B.bname LIKE ?"
-            params.append(f"%{name}%")
+        group_by = " GROUP BY B.card_id, B.bname"
 
-        query += " GROUP BY B.card_id, B.bname"
+        query = base + " " + where_clause + group_by
 
         cur.execute(query, params)
         results = cur.fetchall()
@@ -771,7 +820,6 @@ class FinesPage(tk.Frame):
 
         for card_id, bname, total in results:
             self.tree.insert("", "end", values=(card_id, bname, f"{total:.2f}"))
-
     # ---------------- PAY FINE ----------------
     def pay_fine(self):
         selected = self.tree.selection()
