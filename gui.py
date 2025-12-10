@@ -36,33 +36,47 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg = theme.BG_COLOR)
+        super().__init__(parent, bg=theme.BG_COLOR)
 
-        #Main frame that will center its child
-        content_frame = tk.Frame(self, bg = theme.CARD_BG, padx = 20, pady = 20)
-        content_frame.pack(expand=True)  #Center vertically and horizontally
+        # Centering container
+        outer = tk.Frame(self, bg=theme.BG_COLOR)
+        outer.pack(expand=True)
 
-        #All the pages for functional requirements
+        # Card-style container
+        content_frame = tk.Frame(
+            outer,
+            bg=theme.CARD_BG,
+            padx=30,
+            pady=30,
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        content_frame.pack()
+
+        # Title
         tk.Label(
-            content_frame, 
-            text="Library Management System", 
-            font = theme.FONT_TITLE,
-            bg = theme.CARD_BG,
-            fg = theme.TEXT_MAIN
-            ).pack(pady=20)
+            content_frame,
+            text="Library Management System",
+            font=theme.FONT_TITLE,
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN
+        ).pack(pady=(0, 5))
 
+        # Helper to create uniform wide buttons
         def nav_button(text, page):
-            return ttk.Button(
+            btn = ttk.Button(
                 content_frame,
-                text = text,
-                style = "Accent.TButton",
-                command = lambda: controller.show_frame(page)
+                text=text,
+                style="Accent.TButton",
+                command=lambda: controller.show_frame(page)
             )
+            btn.pack(fill="x", pady=6, ipady=3)
+            return btn
 
-        nav_button("Search Books", SearchPage).pack(fill="x", pady=10)
-        nav_button("Manage Loans", LoansPage).pack(fill="x", pady=10)
-        nav_button("Manage Borrowers", BorrowersPage).pack(fill="x", pady=10)
-        nav_button("Manage Fines", FinesPage).pack(fill="x", pady=10)
+        nav_button("🔍  Search Books", SearchPage)
+        nav_button("📚  Manage Loans", LoansPage)
+        nav_button("👤  Manage Borrowers", BorrowersPage)
+        nav_button("💸  Manage Fines", FinesPage)
 
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -204,8 +218,6 @@ class SearchPage(tk.Frame):
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg = theme.BG_COLOR)
-        # tk.Label(self, text="Manage Loans (Checkout/Checkin)", font=("Arial", 18)).pack(pady=10)
-        # tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
 
         topBar = tk.Frame(self, bg=theme.BG_COLOR)
         topBar.pack(fill="x", pady=10, padx=10)
@@ -386,13 +398,13 @@ class LoansPage(tk.Frame):
         isbn = self.isbn_entry.get().strip()
         card_id = self.card_entry.get().strip()
         if not isbn or not card_id:
-            messagebox.showerror("Error", "Please enter both ISBN and Borrower Card ID")
+            messagebox.showerror("Error", "Please enter both ISBN and Borrower Card ID", parent=self)
             return
         success, msg = library.checkout_book(isbn, card_id)
         if success:
-            messagebox.showinfo("Success", msg)
+            messagebox.showinfo("Success", msg, parent = self)
         else:
-            messagebox.showerror("Error", msg)
+            messagebox.showerror("Error", msg, parent = self)
         self.load_available_books()
         self.load_checked_out_books()
 
@@ -400,7 +412,7 @@ class LoansPage(tk.Frame):
     def checkout_selected_book(self):
         selected = self.available_tree.selection()
         if not selected:
-            messagebox.showerror("Error", "Please select a book from the table")
+            messagebox.showerror("Error", "Please select a book from the table", parent=self)
             return
 
         isbn = str(self.available_tree.item(selected[0])["values"][0])
@@ -408,14 +420,14 @@ class LoansPage(tk.Frame):
         isbn = isbn.replace("-", "").replace(" ", "").zfill(10) #When retrieving values from tree it removes leading zeroes, add them back (All isbns are 10 chars)
 
         if not card_id:
-            messagebox.showerror("Error", "Please enter Borrower Card ID")
+            messagebox.showerror("Error", "Please enter Borrower Card ID", parent=self)
             return
 
         success, msg = library.checkout_book(isbn, card_id)
         if success:
-            messagebox.showinfo("Success", msg)
+            messagebox.showinfo("Success", msg, parent = self)
         else:
-            messagebox.showerror("Error", msg)
+            messagebox.showerror("Error", msg, parent = self)
 
         self.load_available_books()
         self.load_checked_out_books()
@@ -424,14 +436,14 @@ class LoansPage(tk.Frame):
     def checkin_selected_book(self):
         selected = self.checked_out_tree.selection()
         if not selected:
-            messagebox.showerror("Error", "Please select a book to check-in")
+            messagebox.showerror("Error", "Please select a book to check-in", parent=self)
             return
         loan_id = self.checked_out_tree.item(selected[0])["values"][0]
         success, msg = library.checkin_book(loan_id)
         if success:
-            messagebox.showinfo("Success", msg)
+            messagebox.showinfo("Success", msg, parent = self)
         else:
-            messagebox.showerror("Error", msg)
+            messagebox.showerror("Error", msg, parent= self)
         self.load_available_books()
         self.load_checked_out_books()
 
