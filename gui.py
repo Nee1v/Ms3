@@ -157,42 +157,145 @@ class SearchPage(tk.Frame):
 
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
-        tk.Label(self, text="Manage Loans (Checkout/Checkin)", font=("Arial", 18)).pack(pady=10)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
+        super().__init__(parent, bg = theme.BG_COLOR)
+        # tk.Label(self, text="Manage Loans (Checkout/Checkin)", font=("Arial", 18)).pack(pady=10)
+        # tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
+
+        topBar = tk.Frame(self, bg=theme.BG_COLOR)
+        topBar.pack(fill="x", pady=10, padx=10)
+
+        tk.Label(
+            topBar,
+            text="Manage Loans (Checkout / Check-in)",
+            font=theme.FONT_TITLE,
+            bg=theme.BG_COLOR,
+            fg="white"
+        ).pack(side="left")
+
+        ttk.Button(
+            topBar,
+            text="← Back to Home",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(HomePage)
+        ).pack(side="right")
 
         #Checkout section
-        checkout_frame = tk.LabelFrame(self, text="Checkout Book")
+        checkout_frame = tk.LabelFrame(
+            self,
+            text="Checkout Book",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            padx=10,
+            pady=10
+        )
         checkout_frame.pack(fill="x", padx=10, pady=5)
 
-        tk.Label(checkout_frame, text="ISBN:").grid(row=0, column=0, padx=5, pady=5)
-        self.isbn_entry = tk.Entry(checkout_frame)
-        self.isbn_entry.grid(row=0, column=1, padx=5, pady=5)
+        tk.Label(
+            checkout_frame,
+            text="ISBN:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        self.isbn_entry = tk.Entry(
+            checkout_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.isbn_entry.grid(row=0, column=1, padx=5, pady=5, sticky="w")
 
-        tk.Label(checkout_frame, text="Borrower Card ID:").grid(row=0, column=2, padx=5, pady=5)
-        self.card_entry = tk.Entry(checkout_frame)
-        self.card_entry.grid(row=0, column=3, padx=5, pady=5)
+        tk.Label(
+            checkout_frame,
+            text="Borrower Card ID:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=0, column=2, padx=5, pady=5, sticky="e")
+        self.card_entry = tk.Entry(
+            checkout_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.card_entry.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
-        tk.Button(checkout_frame, text="Checkout by ISBN", command=self.checkout_by_isbn).grid(row=0, column=4, padx=5, pady=5)
+        ttk.Button(
+            checkout_frame,
+            text="Checkout by ISBN",
+            style="Accent.TButton",
+            command=self.checkout_by_isbn
+        ).grid(row=0, column=4, padx=5, pady=5)
 
         #Table of available books to select
-        self.available_tree = ttk.Treeview(self, columns=("ISBN", "Title", "Authors"), show="headings", selectmode="browse")
+        avail_frame = tk.Frame(self, bg=theme.BG_COLOR)
+        avail_frame.pack(fill="both", expand=True, padx=10, pady=(5, 0))
+
+        tk.Label(
+            avail_frame,
+            text="Available Books",
+            bg=theme.BG_COLOR,
+            fg="white",
+            font= theme.FONT_SUBTITLE
+        ).pack(anchor="w", pady=(0, 3))
+
+        self.available_tree = ttk.Treeview(
+            avail_frame,
+            columns=("ISBN", "Title", "Authors"),
+            show="headings",
+            selectmode="browse",
+            style="Treeview"
+        )
         for col in self.available_tree["columns"]:
             self.available_tree.heading(col, text=col)
-        self.available_tree.pack(fill="both", expand=True, padx=10, pady=5)
+            self.available_tree.column(col, width=200, anchor="w")
+        self.available_tree.pack(fill="both", expand=True, padx=0, pady=0)
 
-        tk.Button(self, text="Checkout Selected Book", command=self.checkout_selected_book).pack(pady=5)
+        # autofill ISBN when selecting a book
+        self.available_tree.bind("<<TreeviewSelect>>", self.on_available_book_select)
+
+        ttk.Button(
+            self,
+            text="Checkout Selected Book",
+            style="Accent.TButton",
+            command=self.checkout_selected_book
+        ).pack(pady=5)
 
         #Check in section
-        checkin_frame = tk.LabelFrame(self, text="Check-in Books")
-        checkin_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        checkin_frame = tk.LabelFrame(
+            self,
+            text="Check-in Books",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            padx=10,
+            pady=10
+        )
+        checkin_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.checked_out_tree = ttk.Treeview(checkin_frame, columns=("Loan ID", "ISBN", "Title", "Borrower ID", "Due Date"), show="headings", selectmode="browse")
+        self.checked_out_tree = ttk.Treeview(
+            checkin_frame,
+            columns=("Loan ID", "ISBN", "Title", "Borrower ID", "Due Date"),
+            show="headings",
+            selectmode="browse",
+            style="Treeview"
+        )
         for col in self.checked_out_tree["columns"]:
             self.checked_out_tree.heading(col, text=col)
-        self.checked_out_tree.pack(fill="both", expand=True, padx=10, pady=5)
+            self.checked_out_tree.column(col, width=150, anchor="w")
+        self.checked_out_tree.pack(fill="both", expand=True, padx=0, pady=5)
 
-        tk.Button(checkin_frame, text="Check-in Selected Book", command=self.checkin_selected_book).pack(pady=5)
+        ttk.Button(
+            checkin_frame,
+            text="Check-in Selected Book",
+            style="Accent.TButton",
+            command=self.checkin_selected_book
+        ).pack(pady=5)
 
         self.load_available_books()
         self.load_checked_out_books()
@@ -212,6 +315,13 @@ class LoansPage(tk.Frame):
         results = library.getBooksCheckedOut("")  #Get all checked out books
         for item in results:
             self.checked_out_tree.insert("", "end", values=(item["Loan_id"], item["Isbn"], item["Title"], item["Card_id"], item["Due_date"]))
+
+    def on_available_book_select(self, event):
+        selected = self.available_tree.selection()
+        if selected:
+            isbn = str(self.available_tree.item(selected[0])["values"][0])
+            self.isbn_entry.delete(0, tk.END)
+            self.isbn_entry.insert(0, isbn)
 
     #Checkout methods
     #Checkout by isbn requires you to enter a valid isbn and borrower id to checkout a max of 3 books

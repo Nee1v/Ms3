@@ -15,8 +15,6 @@ FONT_BUTTON = ("Segoe UI", 11, "bold")
 FONT_BODY = ("Segoe UI", 11)
 INPUT_BG = "#F4E9F3"        # light pastel lavender (soft, readable)
 INPUT_FG = "#2B0E34"        # dark plum text
-OUTLINE_COLOR = "#2B0E34"   # dark plum outline for retro look
-
 
 
 def apply_theme(root: tk.Tk) -> None:
