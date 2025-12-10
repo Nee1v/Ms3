@@ -60,21 +60,68 @@ class HomePage(tk.Frame):
 
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
+        super().__init__(parent, bg = theme.BG_COLOR)
 
         #Title
-        tk.Label(self, text="Search Books", font=("Arial", 18)).pack(pady=10)
+        topBar = tk.Frame(self, bg = theme.BG_COLOR)
+        topBar.pack(fill="x")
 
-        #Single text search entry
-        self.search_entry = tk.Entry(self, width=50)
-        self.search_entry.pack(pady=5)
+        tk.Label(
+            topBar,
+            text="Search Books",
+            font=theme.FONT_TITLE,
+            bg = theme.BG_COLOR,
+            fg = theme.TEXT_MAIN
+        ).pack(side = "left")
 
-        #Search and Back buttons
-        tk.Button(self, text="Search", command=self.perform_search).pack(pady=5)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=10)
+        ttk.Button(
+            topBar,
+            text="← Back to Home",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(HomePage)
+        ).pack(side="right")
+
+        # Search bar
+        search_frame = tk.Frame(self, bg=theme.CARD_BG, padx=10, pady=10)
+        search_frame.pack(fill="x", padx=10, pady=5)
+
+        tk.Label(
+            search_frame,
+            text = "Search by Title, Author, or ISBN:",
+            bg = theme.CARD_BG,
+            fg = theme.TEXT_MAIN,
+            font = theme.FONT_BODY  
+        ).grid(row = 0, column = 0, sticky = "w")
+
+        self.search_entry = tk.Entry(
+            search_frame,
+            width = 50,
+            bg = "#020617",
+            fg = theme.TEXT_MAIN,
+            insertbackground = theme.TEXT_MAIN, 
+            relief = "flat"
+        )
+        self.search_entry.grid(row = 1, column = 0, pady = 5, sticky = "w")
+
+        #Search button
+        ttk.Button(
+            search_frame,
+            text="Search",
+            style="Accent.TButton",
+            command=self.perform_search
+        ).grid(row =1, column=1, padx=10)
 
         #Table to show search results
-        self.tree = ttk.Treeview(self, columns=("ISBN", "Title", "Authors", "Availability", "BorrowerID"), show="headings")
+        table_frame = tk.Frame(self, bg=theme.BG_COLOR)
+        table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.tree = ttk.Treeview(
+            table_frame,
+            columns=("ISBN", "Title", "Authors", "Availability", "BorrowerID"),
+            show="headings",
+            style="Treeview",
+            selectmode="browse"
+        )
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=150, anchor="center")  
