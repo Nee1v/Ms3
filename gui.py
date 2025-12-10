@@ -307,7 +307,13 @@ class LoansPage(tk.Frame):
         results = library.search_books("")  
         for item in results:
             if item["Availability"] == "IN":
-                self.available_tree.insert("", "end", values=(str(item["Isbn"]), item["Title"], item["Authors"]))
+                isbn = str(item["Isbn"]).strip().zfill(10)
+                self.available_tree.insert(
+                    "",
+                    "end",
+                    values=(isbn, item["Title"], item["Authors"])
+                )
+
 
     def load_checked_out_books(self):
         for row in self.checked_out_tree.get_children():
@@ -318,10 +324,15 @@ class LoansPage(tk.Frame):
 
     def on_available_book_select(self, event):
         selected = self.available_tree.selection()
-        if selected:
-            isbn = str(self.available_tree.item(selected[0])["values"][0])
-            self.isbn_entry.delete(0, tk.END)
-            self.isbn_entry.insert(0, isbn)
+        if not selected:
+            return
+
+        raw = str(self.available_tree.item(selected[0])["values"][0]).strip()
+        isbn_str = raw.zfill(10)
+
+        self.isbn_entry.delete(0, tk.END)
+        self.isbn_entry.insert(0, isbn_str)
+
 
     #Checkout methods
     #Checkout by isbn requires you to enter a valid isbn and borrower id to checkout a max of 3 books
