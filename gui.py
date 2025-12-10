@@ -68,6 +68,8 @@ class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg = theme.BG_COLOR)
 
+        self.controller = controller 
+
         #Title
         topBar = tk.Frame(self, bg = theme.BG_COLOR)
         topBar.pack(fill="x")
@@ -137,6 +139,8 @@ class SearchPage(tk.Frame):
             self.tree.column(col, width=150, anchor="center")  
         self.tree.pack(fill="both", expand=True)
 
+        self.tree.bind("<<TreeviewSelect>>", self.on_book_selected)
+
     #Function that actually performs search is in library_app.py
     def perform_search(self):
         term = self.search_entry.get()
@@ -154,6 +158,28 @@ class SearchPage(tk.Frame):
                 "end",
                 values=(item["Isbn"], item["Title"], item["Authors"], item["Availability"], borrower_id)
             )
+
+    def on_book_selected(self, event):
+        """When a book is selected in the search results, autofill ISBN in LoansPage."""
+        selected = self.tree.selection()
+        if not selected:
+            return
+
+        values = self.tree.item(selected[0])["values"]
+        if not values:
+            return
+
+        raw_isbn = str(values[0]).strip()
+        isbn_str = raw_isbn.zfill(10)  # keep leading zeros
+
+        # get the LoansPage instance from the controller and set its ISBN entry
+        try:
+            loans_page = self.controller.frames[LoansPage]
+            loans_page.isbn_entry.delete(0, tk.END)
+            loans_page.isbn_entry.insert(0, isbn_str)
+        except Exception:
+            # if LoansPage isn't available for some reason, just ignore
+            pass
 
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
