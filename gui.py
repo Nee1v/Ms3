@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import library_app as library  #Backend functions
+import theme #Theme module
 
 class MainApp(tk.Tk): #Initialize tkinter window
     def __init__(self):
@@ -8,9 +9,12 @@ class MainApp(tk.Tk): #Initialize tkinter window
         self.title("Library Management System")
         self.geometry("900x600")
 
+        theme.apply_theme(self)  #Apply dark theme from theme.py
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-        container = tk.Frame(self)
+
+        container = ttk.Frame(self, style = "TFrame")
         container.grid(row=0, column=0, sticky="nsew")
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
@@ -32,22 +36,27 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
+        super().__init__(parent, bg = theme.BG_COLOR)
 
         #Main frame that will center its child
-        content_frame = tk.Frame(self)
+        content_frame = tk.Frame(self, bg = theme.CARD_BG, padx = 20, pady = 20)
         content_frame.pack(expand=True)  #Center vertically and horizontally
 
         #All the pages for functional requirements
         tk.Label(content_frame, text="Library Management System", font=("Arial", 24)).pack(pady=20)
-        tk.Button(content_frame, text="Search Books", width=25,
-                  command=lambda: controller.show_frame(SearchPage)).pack(pady=10)
-        tk.Button(content_frame, text="Manage Loans", width=25,
-                  command=lambda: controller.show_frame(LoansPage)).pack(pady=10)
-        tk.Button(content_frame, text="Manage Borrowers", width=25,
-                  command=lambda: controller.show_frame(BorrowersPage)).pack(pady=10)
-        tk.Button(content_frame, text="Fines", width=25,
-                  command=lambda: controller.show_frame(FinesPage)).pack(pady=10)
+
+        def nav_button(text, page):
+            return ttk.Button(
+                content_frame,
+                text = text,
+                style = "Accent.TButton",
+                command = lambda: controller.show_frame(page)
+            )
+
+        nav_button("Search Books", SearchPage).pack(fill="x", pady=10)
+        nav_button("Manage Loans", LoansPage).pack(fill="x", pady=10)
+        nav_button("Manage Borrowers", BorrowersPage).pack(fill="x", pady=10)
+        nav_button("Manage Fines", FinesPage).pack(fill="x", pady=10)
 
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
