@@ -43,7 +43,13 @@ class HomePage(tk.Frame):
         content_frame.pack(expand=True)  #Center vertically and horizontally
 
         #All the pages for functional requirements
-        tk.Label(content_frame, text="Library Management System", font=("Arial", 24)).pack(pady=20)
+        tk.Label(
+            content_frame, 
+            text="Library Management System", 
+            font = theme.FONT_TITLE,
+            bg = theme.CARD_BG,
+            fg = theme.TEXT_MAIN
+            ).pack(pady=20)
 
         def nav_button(text, page):
             return ttk.Button(
@@ -69,9 +75,9 @@ class SearchPage(tk.Frame):
         tk.Label(
             topBar,
             text="Search Books",
-            font=theme.FONT_TITLE,
+            font = theme.FONT_TITLE,
             bg = theme.BG_COLOR,
-            fg = theme.TEXT_MAIN
+            fg = "white"
         ).pack(side = "left")
 
         ttk.Button(
@@ -95,13 +101,17 @@ class SearchPage(tk.Frame):
 
         self.search_entry = tk.Entry(
             search_frame,
-            width = 50,
-            bg = "#020617",
-            fg = theme.TEXT_MAIN,
-            insertbackground = theme.TEXT_MAIN, 
-            relief = "flat"
+            width=50,
+            bg=theme.INPUT_BG,          # light pastel background
+            fg=theme.TEXT_MAIN,         # dark plum or near-black text
+            insertbackground=theme.TEXT_MAIN,
+            relief="flat",
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
         )
         self.search_entry.grid(row = 1, column = 0, pady = 5, sticky = "w")
+        # enable pressing Enter to search
+        self.search_entry.bind("<Return>", lambda event: self.perform_search())
 
         #Search button
         ttk.Button(
