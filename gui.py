@@ -392,36 +392,122 @@ class LoansPage(tk.Frame):
 #4 my tr maan
 class BorrowersPage(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent)
+        super().__init__(parent, bg=theme.BG_COLOR)
 
-        tk.Label(self, text="Borrower Management", font=("Arial", 18)).pack(pady=10)
+        # Top bar
+        topBar = tk.Frame(self, bg=theme.BG_COLOR)
+        topBar.pack(fill="x", pady=10, padx=10)
 
-        form_frame = tk.Frame(self)
+        tk.Label(
+            topBar,
+            text="Borrower Management",
+            font=theme.FONT_TITLE,
+            bg=theme.BG_COLOR,
+            fg="white"
+        ).pack(side="left")
+
+        ttk.Button(
+            topBar,
+            text="← Back to Home",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(HomePage)
+        ).pack(side="right")
+
+        card = tk.Frame(self, bg=theme.CARD_BG, padx=20, pady=20)
+        card.pack(pady=20, padx=20)
+
+        form_frame = tk.Frame(card, bg=theme.CARD_BG)
         form_frame.pack(pady=10)
 
         # --- Input Fields ---
-        tk.Label(form_frame, text="Full Name:").grid(row=0, column=0, sticky="e")
-        self.name_entry = tk.Entry(form_frame)
-        self.name_entry.grid(row=0, column=1)
+        tk.Label(
+            form_frame,
+            text="Full Name:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        self.name_entry = tk.Entry(
+            form_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.name_entry.grid(row=0, column=1, pady=5)
 
-        tk.Label(form_frame, text="SSN:").grid(row=1, column=0, sticky="e")
-        self.ssn_entry = tk.Entry(form_frame)
-        self.ssn_entry.grid(row=1, column=1)
+        tk.Label(
+            form_frame,
+            text="SSN:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.ssn_entry = tk.Entry(
+            form_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.ssn_entry.grid(row=1, column=1, pady=5)
 
-        tk.Label(form_frame, text="Address:").grid(row=2, column=0, sticky="e")
-        self.address_entry = tk.Entry(form_frame)
-        self.address_entry.grid(row=2, column=1)
+        tk.Label(
+            form_frame,
+            text="Address:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.address_entry = tk.Entry(
+            form_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.address_entry.grid(row=2, column=1, pady=5)
 
-        tk.Label(form_frame, text="Phone:").grid(row=3, column=0, sticky="e")
-        self.phone_entry = tk.Entry(form_frame)
-        self.phone_entry.grid(row=3, column=1)
+        tk.Label(
+            form_frame,
+            text="Phone:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        self.phone_entry = tk.Entry(
+            form_frame,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        self.phone_entry.grid(row=3, column=1, pady=5)
 
         # --- Buttons ---
-        tk.Button(self, text="Create Borrower", command=self.create_borrower).pack(pady=10)
-        tk.Button(self, text="Back to Home", command=lambda: controller.show_frame(HomePage)).pack(pady=5)
+        ttk.Button(
+            card,
+            text="Create Borrower",
+            style="Accent.TButton",
+            command=self.create_borrower
+        ).pack(pady=10)
 
         # --- Status Message ---
-        self.status_label = tk.Label(self, text="", fg="red")
+        self.status_label = tk.Label(
+            card,
+            text="",
+            bg=theme.CARD_BG,
+            fg="red",
+            font=theme.FONT_BODY
+        )
         self.status_label.pack(pady=5)
 
     def create_borrower(self):
