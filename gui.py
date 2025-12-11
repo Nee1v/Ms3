@@ -154,7 +154,7 @@ class SearchPage(tk.Frame):
         self.tree.pack(fill="both", expand=True)
 
         self.tree.bind("<<TreeviewSelect>>", self.on_book_selected)
-        self.tree.bind("<Double-1>", self.copy_isbn_from_row)
+        self.tree.bind("<Double-1>", lambda event:self.send_to_loans())
 
     #Function that actually performs search is in library_app.py
     def perform_search(self):
@@ -214,6 +214,36 @@ class SearchPage(tk.Frame):
         # Give small visual feedback in title bar
         self.controller.title(f"Copied ISBN: {isbn_str}")
         self.after(1200, lambda: self.controller.title("Library Management System"))
+
+    def send_to_loans(self):
+        selected = self.tree.selection()
+        if not selected:
+            return
+        
+        values = self.tree.item(selected[0])["values"]
+        if not values:
+            return
+        
+        raw_isbn = str(values[0]).strip()
+        borrower_id = values[4]  # BorrowerID column
+
+        normalized_isbn = raw_isbn.replace("-", "").replace(" ", "").zfill(10)
+        loans_page = self.controller.frames[LoansPage]
+
+        # Autofill ISBN field
+        loans_page.isbn_entry.delete(0, tk.END)
+        loans_page.isbn_entry.insert(0, normalized_isbn)
+
+        # If the book is currently checked out, also prefill card ID
+        if borrower_id:
+            loans_page.card_entry.delete(0, tk.END)
+            loans_page.card_entry.insert(0, borrower_id)
+
+        # Try to highlight it in Available Books (iff Availability == IN)
+        loans_page.focus_available_book(raw_isbn)
+
+        #Switch to Loans page
+        self.controller.show_frame(LoansPage)
 
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -371,6 +401,22 @@ class LoansPage(tk.Frame):
                     "end",
                     values=(isbn, item["Title"], item["Authors"])
                 )
+    
+    def focus_available_book(self, isbn_raw):
+        """
+        Focus and select a book in the available books tree by its raw ISBN.
+        """
+        target = str(isbn_raw).replace("-", "").replace(" ", "").strip().zfill(10)
+
+        for item_id in self.available_tree.get_children():
+            row_isbn = str(self.available_tree.item(item_id)["values"][0])
+            row_isbn_norm = row_isbn.replace("-", "").replace(" ", "").strip().zfill(10)
+
+            if row_isbn_norm == target:
+                self.available_tree.selection_set(item_id)
+                self.available_tree.focus(item_id)
+                self.available_tree.see(item_id)
+                break
 
 
     def load_checked_out_books(self):
