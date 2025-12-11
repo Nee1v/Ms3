@@ -93,6 +93,25 @@ def create_database():
         );
         """)
 
+                # USERS table for authentication
+        cursor.execute("""
+        CREATE TABLE USERS (
+            username    TEXT PRIMARY KEY,
+            password    TEXT NOT NULL,
+            card_id     TEXT UNIQUE,
+            is_librarian INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (card_id) REFERENCES BORROWER(Card_id)
+                ON DELETE RESTRICT
+        );
+        """)
+
+        # Insert default librarian account
+        cursor.execute("""
+        INSERT INTO USERS (username, password, card_id, is_librarian)
+        VALUES ('Library', 'Guest', NULL, 1);
+        """)
+
+
         conn.commit()
         print(f"Success! Database '{DB_FILE}' and all tables created.")
 

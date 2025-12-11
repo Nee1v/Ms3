@@ -84,6 +84,7 @@ class LoginPage(tk.Frame):
             width=30
         )
         self.username_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+        
 
         # "login:" field -> treat as password (for future)
         tk.Label(
@@ -112,7 +113,7 @@ class LoginPage(tk.Frame):
             card,
             text="Login",
             style="Accent.TButton",
-            command=lambda: controller.show_frame(HomePage)
+            command=self.handle_login
         ).grid(row=3, column=0, columnspan=2, pady=(15, 5), sticky="ew")
 
         # Sign Up button – goes to SignUpPage
@@ -122,6 +123,45 @@ class LoginPage(tk.Frame):
             style="Accent.TButton",
             command=lambda: controller.show_frame(SignUpPage)
         ).grid(row=4, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+
+    def handle_login(self):
+        import sqlite3
+
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not username or not password:
+            messagebox.showerror("Error", "Please enter both username and password.", parent=self)
+            return
+
+        try:
+            conn = sqlite3.connect("library.db")
+            cur = conn.cursor()
+
+            cur.execute("""
+                SELECT username, password, card_id, is_librarian
+                FROM USERS
+                WHERE username = ?
+            """, (username,))
+            row = cur.fetchone()
+            conn.close()
+
+            if row is None:
+                messagebox.showerror("Error", "Incorrect username or password.", parent=self)
+                return
+
+            db_username, db_password, db_card_id, is_librarian = row
+
+            if password != db_password:
+                messagebox.showerror("Error", "Incorrect username or password.", parent=self)
+                return
+
+            # If we get here, login is valid → go to HomePage
+            self.controller.show_frame(HomePage)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Database error during login:\n{e}", parent=self)
+
 
 
 # -------------------- Sign Up Page --------------------
@@ -251,13 +291,56 @@ class SignUpPage(tk.Frame):
         )
         self.phone_entry.grid(row=5, column=1, sticky="w", padx=5, pady=5)
 
-        # (Placeholder) Create Account button – does nothing DB-wise yet
+                # Username
+        tk.Label(
+            card,
+            text="Username:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=6, column=0, sticky="e", padx=5, pady=5)
+        self.username_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.username_entry.grid(row=6, column=1, sticky="w", padx=5, pady=5)
+
+        # Password
+        tk.Label(
+            card,
+            text="Password:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=7, column=0, sticky="e", padx=5, pady=5)
+        self.password_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            show="*"
+        )
+        self.password_entry.grid(row=7, column=1, sticky="w", padx=5, pady=5)
+
+
+
+        # Create Account button
         ttk.Button(
             card,
             text="Create Account",
             style="Accent.TButton",
-            command=self._placeholder_signup
-        ).grid(row=6, column=0, columnspan=2, pady=(15, 5), sticky="ew")
+            command=self.handle_signup
+        ).grid(row=8, column=0, columnspan=2, pady=(15, 5), sticky="ew")
 
         # Back to Login
         ttk.Button(
@@ -265,7 +348,7 @@ class SignUpPage(tk.Frame):
             text="← Back to Login",
             style="Accent.TButton",
             command=lambda: controller.show_frame(LoginPage)
-        ).grid(row=7, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+        ).grid(row=9, column=0, columnspan=2, pady=(5, 0), sticky="ew")
 
     def _validate_digits(self, new_value: str) -> bool:
         """
@@ -274,25 +357,76 @@ class SignUpPage(tk.Frame):
         """
         return new_value.isdigit() or new_value == ""
 
-    def _placeholder_signup(self):
-        """
-        Placeholder for sign up logic.
-        Later you can hook this into library.add_borrower or a USER table.
-        """
-        if not (
-            self.fullname_entry.get().strip()
-            and self.ssn_entry.get().strip()
-            and self.address_entry.get().strip()
-            and self.phone_entry.get().strip()
-        ):
+    def handle_signup(self):
+        import sqlite3
+
+        fullname = self.fullname_entry.get().strip()
+        ssn = self.ssn_entry.get().strip()
+        address = self.address_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not (fullname and ssn and address and phone and username and password):
             messagebox.showerror("Error", "Please fill out all fields.", parent=self)
             return
 
-        messagebox.showinfo(
-            "Sign Up",
-            "Sign up logic not implemented yet.\n(Fields validate correctly though!)",
-            parent=self
-        )
+        try:
+            conn = sqlite3.connect("library.db")
+            cur = conn.cursor()
+
+            # 1) Check username is not already taken
+            cur.execute("SELECT 1 FROM USERS WHERE username = ?", (username,))
+            if cur.fetchone():
+                conn.close()
+                messagebox.showerror("Error", "Username is already taken.", parent=self)
+                return
+
+            # 2) Check SSN is not already in BORROWER
+            cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
+            if cur.fetchone():
+                conn.close()
+                messagebox.showerror("Error", "An account with this SSN already exists.", parent=self)
+                return
+
+            # 3) Generate new Card_id like BorrowersPage / add_borrower
+            cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
+            result = cur.fetchone()[0]
+            new_number = int(result) + 1 if result else 1
+            new_card_id = f"ID{new_number:06d}"
+
+            # 4) Insert into BORROWER first
+            cur.execute("""
+                INSERT INTO BORROWER (card_id, Ssn, Bname, Address, Phone)
+                VALUES (?, ?, ?, ?, ?)
+            """, (new_card_id, ssn, fullname, address, phone))
+
+            # 5) Insert into USERS for this borrower
+            cur.execute("""
+                INSERT INTO USERS (username, password, card_id, is_librarian)
+                VALUES (?, ?, ?, 0)
+            """, (username, password, new_card_id))
+
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo(
+                "Success",
+                f"Account created.\nYour Card ID: {new_card_id}",
+                parent=self
+            )
+
+            # Optionally redirect back to login
+            self.controller.show_frame(LoginPage)
+
+        except Exception as e:
+            try:
+                conn.rollback()
+                conn.close()
+            except Exception:
+                pass
+            messagebox.showerror("Error", f"Database error during sign up:\n{e}", parent=self)
+
 
 # -------------------- Home Page --------------------
 

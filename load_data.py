@@ -83,6 +83,14 @@ def load_data():
                 print("      Rolling back changes...")
                 conn.rollback()  # Rollback changes for this file
                 return  # Stop the script on failure
+            
+        # After borrowers are loaded, create USERS rows for each borrower
+        # username = Card_id, password = Ssn, card_id = Card_id, is_librarian = 0
+        cursor.execute("""
+            INSERT INTO USERS (username, password, card_id, is_librarian)
+            SELECT Card_id, Ssn, Card_id, 0
+            FROM BORROWER;
+        """)
 
         # If all files loaded successfully, commit the changes
         conn.commit()
