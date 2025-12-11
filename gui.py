@@ -1056,8 +1056,7 @@ class BorrowersPage(tk.Frame):
         address = self.address_entry.get().strip()
         phone = self.phone_entry.get().strip()
 
-
-        #1. Validate required fields (NOT NULL)
+        # 1. Validate required fields (NOT NULL)
         if not name or not ssn or not address:
             self.status_label.config(
                 text="Error: Name, SSN, and Address are required.",
@@ -1070,7 +1069,7 @@ class BorrowersPage(tk.Frame):
             conn = sqlite3.connect("library.db")
             cur = conn.cursor()
 
-            #2. Enforce ONE borrower per SSN
+            # 2. Enforce ONE borrower per SSN
             cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
             if cur.fetchone():
                 self.status_label.config(
@@ -1080,26 +1079,35 @@ class BorrowersPage(tk.Frame):
                 conn.close()
                 return
 
-            #3. Auto-generate new card_id in the format ID000001
+            # 3. Auto-generate new card_id in the format ID000001
             cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
             result = cur.fetchone()[0]
             new_number = int(result) + 1 if result else 1
             new_card_id = f"ID{new_number:06d}"  # ID + 6-digit zero-padded number
 
-            #4. Insert new borrower
+            # 4. Insert new borrower
             cur.execute("""
                 INSERT INTO BORROWER (card_id, bname, address, phone, ssn)
                 VALUES (?, ?, ?, ?, ?)
             """, (new_card_id, name, address, phone, ssn))
 
+            # 5. Also create a login in USERS:
+            #    username = card_id, password = SSN, is_librarian = 0
+            cur.execute("""
+                INSERT INTO USERS (username, password, card_id, is_librarian)
+                VALUES (?, ?, ?, 0)
+            """, (new_card_id, ssn, new_card_id))
+
             conn.commit()
             conn.close()
 
-            # 5. Success message + clear form
+            # 6. Success message + clear form
             self.last_card_id = new_card_id
 
             self.status_label.config(
-                text=f"Borrower created successfully. Card No: {new_card_id} (click to copy)",
+                text=f"Borrower created successfully. "
+                    f"Login Username: {new_card_id}, Password: {ssn} "
+                    f"(Card No: {new_card_id}, click to copy card)",
                 fg="green"
             )
 
@@ -1109,7 +1117,6 @@ class BorrowersPage(tk.Frame):
                 loans_page.card_entry.delete(0, tk.END)
                 loans_page.card_entry.insert(0, new_card_id)
             except Exception:
-                # if LoansPage not initialized for some reason, just ignore
                 pass
             
             # prefill card id in FinesPage if possible
@@ -1130,6 +1137,7 @@ class BorrowersPage(tk.Frame):
                 text=f"Database Error: {str(e)}",
                 fg="red"
             )
+
 
     def copy_card_to_clipboard(self, event=None):
         """Copy the last created Card ID to the clipboard when the status label is clicked."""
