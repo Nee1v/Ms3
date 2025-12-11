@@ -56,7 +56,6 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
 #-------------------- Pages --------------------
 
-# -------------------- Login Page --------------------
 class LoginPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
@@ -66,7 +65,7 @@ class LoginPage(tk.Frame):
         outer = tk.Frame(self, bg=theme.BG_COLOR)
         outer.pack(expand=True)
 
-        # Card-style container
+        # Card container
         card = tk.Frame(
             outer,
             bg=theme.CARD_BG,
@@ -77,7 +76,6 @@ class LoginPage(tk.Frame):
         )
         card.pack()
 
-        # Title
         tk.Label(
             card,
             text="Login",
@@ -86,7 +84,6 @@ class LoginPage(tk.Frame):
             fg=theme.TEXT_MAIN
         ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
 
-        # Username label + entry
         tk.Label(
             card,
             text="Username:",
@@ -94,7 +91,6 @@ class LoginPage(tk.Frame):
             fg=theme.TEXT_MAIN,
             font=theme.FONT_BODY
         ).grid(row=1, column=0, sticky="e", padx=5, pady=5)
-
         self.username_entry = tk.Entry(
             card,
             bg=theme.INPUT_BG,
@@ -106,9 +102,7 @@ class LoginPage(tk.Frame):
             width=30
         )
         self.username_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
-        
 
-        # "login:" field -> treat as password (for future)
         tk.Label(
             card,
             text="Password:",
@@ -116,7 +110,6 @@ class LoginPage(tk.Frame):
             fg=theme.TEXT_MAIN,
             font=theme.FONT_BODY
         ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
-
         self.password_entry = tk.Entry(
             card,
             bg=theme.INPUT_BG,
@@ -130,7 +123,6 @@ class LoginPage(tk.Frame):
         )
         self.password_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
 
-        # Login button – for now, always goes to HomePage
         ttk.Button(
             card,
             text="Login",
@@ -138,7 +130,6 @@ class LoginPage(tk.Frame):
             command=self.handle_login
         ).grid(row=3, column=0, columnspan=2, pady=(15, 5), sticky="ew")
 
-        # Sign Up button – goes to SignUpPage
         ttk.Button(
             card,
             text="Sign Up",
@@ -159,7 +150,6 @@ class LoginPage(tk.Frame):
         try:
             conn = sqlite3.connect("library.db")
             cur = conn.cursor()
-
             cur.execute("""
                 SELECT username, password, card_id, is_librarian
                 FROM USERS
@@ -178,37 +168,26 @@ class LoginPage(tk.Frame):
                 messagebox.showerror("Error", "Incorrect username or password.", parent=self)
                 return
 
-            # If we get here, login is valid → remember user and go to HomePage
             self.controller.current_user = db_username
             self.controller.current_card_id = db_card_id
-            # is_librarian is stored as 0/1 integer
             self.controller.is_librarian = bool(is_librarian)
-
             self.controller.show_frame(HomePage)
 
         except Exception as e:
             messagebox.showerror("Error", f"Database error during login:\n{e}", parent=self)
 
 
-
-# -------------------- Sign Up Page --------------------
-
 class SignUpPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
         self.controller = controller
 
-        # validators for digits-only fields with length limits
         vcmd_ssn = (self.register(validate_digits_with_limit), "%P", "9")
         vcmd_phone = (self.register(validate_digits_with_limit), "%P", "10")
 
-
-
-        # Centering container
         outer = tk.Frame(self, bg=theme.BG_COLOR)
         outer.pack(expand=True)
 
-        # Card-style container
         card = tk.Frame(
             outer,
             bg=theme.CARD_BG,
@@ -219,7 +198,6 @@ class SignUpPage(tk.Frame):
         )
         card.pack()
 
-        # Title
         tk.Label(
             card,
             text="Sign Up",
@@ -228,7 +206,6 @@ class SignUpPage(tk.Frame):
             fg=theme.TEXT_MAIN
         ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
 
-        # Instruction
         tk.Label(
             card,
             text="Enter the following:",
@@ -237,7 +214,6 @@ class SignUpPage(tk.Frame):
             font=theme.FONT_BODY
         ).grid(row=1, column=0, columnspan=2, pady=(0, 10))
 
-        # Full Name
         tk.Label(
             card,
             text="Full Name:",
@@ -257,7 +233,6 @@ class SignUpPage(tk.Frame):
         )
         self.fullname_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
 
-        # SSN (numbers only)
         tk.Label(
             card,
             text="SSN:",
@@ -279,7 +254,6 @@ class SignUpPage(tk.Frame):
         )
         self.ssn_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
 
-        # Address
         tk.Label(
             card,
             text="Address:",
@@ -299,7 +273,6 @@ class SignUpPage(tk.Frame):
         )
         self.address_entry.grid(row=4, column=1, sticky="w", padx=5, pady=5)
 
-        # Phone (numbers only)
         tk.Label(
             card,
             text="Phone:",
@@ -319,10 +292,8 @@ class SignUpPage(tk.Frame):
             validate="key",
             validatecommand=vcmd_phone
         )
-
         self.phone_entry.grid(row=5, column=1, sticky="w", padx=5, pady=5)
 
-                # Username
         tk.Label(
             card,
             text="Username:",
@@ -342,7 +313,6 @@ class SignUpPage(tk.Frame):
         )
         self.username_entry.grid(row=6, column=1, sticky="w", padx=5, pady=5)
 
-        # Password
         tk.Label(
             card,
             text="Password:",
@@ -363,9 +333,6 @@ class SignUpPage(tk.Frame):
         )
         self.password_entry.grid(row=7, column=1, sticky="w", padx=5, pady=5)
 
-
-
-        # Create Account button
         ttk.Button(
             card,
             text="Create Account",
@@ -373,14 +340,12 @@ class SignUpPage(tk.Frame):
             command=self.handle_signup
         ).grid(row=8, column=0, columnspan=2, pady=(15, 5), sticky="ew")
 
-        # Back to Login
         ttk.Button(
             card,
             text="← Back to Login",
             style="Accent.TButton",
             command=lambda: controller.show_frame(LoginPage)
         ).grid(row=9, column=0, columnspan=2, pady=(5, 0), sticky="ew")
-
 
     def handle_signup(self):
         import sqlite3
@@ -400,33 +365,28 @@ class SignUpPage(tk.Frame):
             conn = sqlite3.connect("library.db")
             cur = conn.cursor()
 
-            # 1) Check username is not already taken
             cur.execute("SELECT 1 FROM USERS WHERE username = ?", (username,))
             if cur.fetchone():
                 conn.close()
                 messagebox.showerror("Error", "Username is already taken.", parent=self)
                 return
 
-            # 2) Check SSN is not already in BORROWER
             cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
             if cur.fetchone():
                 conn.close()
                 messagebox.showerror("Error", "An account with this SSN already exists.", parent=self)
                 return
 
-            # 3) Generate new Card_id like BorrowersPage / add_borrower
             cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
             result = cur.fetchone()[0]
             new_number = int(result) + 1 if result else 1
             new_card_id = f"ID{new_number:06d}"
 
-            # 4) Insert into BORROWER first
             cur.execute("""
                 INSERT INTO BORROWER (card_id, Ssn, Bname, Address, Phone)
                 VALUES (?, ?, ?, ?, ?)
             """, (new_card_id, ssn, fullname, address, phone))
 
-            # 5) Insert into USERS for this borrower
             cur.execute("""
                 INSERT INTO USERS (username, password, card_id, is_librarian)
                 VALUES (?, ?, ?, 0)
@@ -441,14 +401,12 @@ class SignUpPage(tk.Frame):
                 parent=self
             )
 
-            # Pre-fill login page with this username & password
             login_page = self.controller.frames[LoginPage]
             login_page.username_entry.delete(0, tk.END)
             login_page.username_entry.insert(0, username)
             login_page.password_entry.delete(0, tk.END)
             login_page.password_entry.insert(0, password)
 
-            # Redirect back to login
             self.controller.show_frame(LoginPage)
 
         except Exception as e:
@@ -459,13 +417,21 @@ class SignUpPage(tk.Frame):
                 pass
             messagebox.showerror("Error", f"Database error during sign up:\n{e}", parent=self)
 
-
-# -------------------- Home Page --------------------
-
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
         self.controller = controller
+
+        top_bar = tk.Frame(self, bg="#2e1a47", height=60)
+        top_bar.pack(fill="x")
+
+        tk.Label(
+            top_bar,
+            text=" 📖 Magnesium Library 📖 ",
+            font=("Helvetica", 20, "bold"),
+            fg="white",
+            bg="#2e1a47"
+        ).pack(pady=10)
 
         # Centering container
         outer = tk.Frame(self, bg=theme.BG_COLOR)
@@ -514,7 +480,7 @@ class HomePage(tk.Frame):
             command=self._handle_logout
         )
 
-        # Initial layout based on current user (at app start: treated as borrower)
+        # Initial layout based on current user (at app start)
         self.refresh_for_user()
 
     def _handle_logout(self):
@@ -631,7 +597,7 @@ class SearchPage(tk.Frame):
         self.tree.pack(fill="both", expand=True)
 
         self.tree.bind("<<TreeviewSelect>>", self.on_book_selected)
-        self.tree.bind("<Double-1>", self.copy_isbn_from_row)
+        self.tree.bind("<Double-1>", self.on_tree_double_click)
 
     #Function that actually performs search is in library_app.py
     def perform_search(self):
@@ -691,6 +657,41 @@ class SearchPage(tk.Frame):
         # Give small visual feedback in title bar
         self.controller.title(f"Copied ISBN: {isbn_str}")
         self.after(1200, lambda: self.controller.title("Library Management System"))
+
+    def on_tree_double_click(self, event):
+        """Double-click copies the ISBN and jumps to the Loans page."""
+        self.copy_isbn_from_row(event)
+        self.send_to_loans()
+
+    def send_to_loans(self):
+        selected = self.tree.selection()
+        if not selected:
+            return
+        
+        values = self.tree.item(selected[0])["values"]
+        if not values:
+            return
+        
+        raw_isbn = str(values[0]).strip()
+        borrower_id = values[4]  # BorrowerID column
+
+        normalized_isbn = raw_isbn.replace("-", "").replace(" ", "").zfill(10)
+        loans_page = self.controller.frames[LoansPage]
+
+        # Autofill ISBN field
+        loans_page.isbn_entry.delete(0, tk.END)
+        loans_page.isbn_entry.insert(0, normalized_isbn)
+
+        # If the book is currently checked out, also prefill card ID
+        if borrower_id:
+            loans_page.card_entry.delete(0, tk.END)
+            loans_page.card_entry.insert(0, borrower_id)
+
+        # Try to highlight it in Available Books (iff Availability == IN)
+        loans_page.focus_available_book(raw_isbn)
+
+        #Switch to Loans page
+        self.controller.show_frame(LoansPage)
 
 class LoansPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -848,6 +849,22 @@ class LoansPage(tk.Frame):
                     "end",
                     values=(isbn, item["Title"], item["Authors"])
                 )
+    
+    def focus_available_book(self, isbn_raw):
+        """
+        Focus and select a book in the available books tree by its raw ISBN.
+        """
+        target = str(isbn_raw).replace("-", "").replace(" ", "").strip().zfill(10)
+
+        for item_id in self.available_tree.get_children():
+            row_isbn = str(self.available_tree.item(item_id)["values"][0])
+            row_isbn_norm = row_isbn.replace("-", "").replace(" ", "").strip().zfill(10)
+
+            if row_isbn_norm == target:
+                self.available_tree.selection_set(item_id)
+                self.available_tree.focus(item_id)
+                self.available_tree.see(item_id)
+                break
 
 
     def load_checked_out_books(self):
@@ -1105,9 +1122,10 @@ class BorrowersPage(tk.Frame):
             self.last_card_id = new_card_id
 
             self.status_label.config(
-                text=f"Borrower created successfully. "
-                    f"Login Username: {new_card_id}, Password: {ssn} "
-                    f"(Card No: {new_card_id}, click to copy card)",
+                text=(
+                    f"Borrower created successfully. Card No: {new_card_id} (click to copy). "
+                    f"Login Username: {new_card_id}, Password: {ssn}"
+                ),
                 fg="green"
             )
 
