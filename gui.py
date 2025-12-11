@@ -491,11 +491,6 @@ class HomePage(tk.Frame):
         self.controller.show_frame(LoginPage)
 
     def refresh_for_user(self):
-        """
-        Show/hide admin buttons based on whether the current user is a librarian.
-        Called automatically from MainApp.show_frame(HomePage).
-        """
-        # Clear all button packing
         for btn in (
             self.btn_search,
             self.btn_loans,
@@ -507,15 +502,23 @@ class HomePage(tk.Frame):
 
         # Search is always visible
         self.btn_search.pack(fill="x", pady=6, ipady=3)
+        self.btn_search.state(["!disabled", "!active"])
 
         # Only librarians see these
         if self.controller.is_librarian:
-            self.btn_loans.pack(fill="x", pady=6, ipady=3)
-            self.btn_borrowers.pack(fill="x", pady=6, ipady=3)
-            self.btn_fines.pack(fill="x", pady=6, ipady=3)
+            for btn in (self.btn_loans, self.btn_borrowers, self.btn_fines):
+                btn.pack(fill="x", pady=6, ipady=3)
+                btn.state(["!disabled", "!active"])
 
         # Logout always visible
         self.btn_logout.pack(fill="x", pady=(12, 0), ipady=3)
+        self.btn_logout.state(["!disabled", "!active"])
+
+        # Force redraw
+        self.update_idletasks()
+
+def fix_button_state(btn):
+    btn.state(["!disabled", "!active"])
 
 
 
