@@ -3,11 +3,30 @@ from tkinter import ttk, messagebox
 import library_app as library  #Backend functions
 import theme #Theme module
 
+def validate_digits_with_limit(new_value: str, max_len_str: str) -> bool:
+    """
+    Allow only digits (or empty string) and enforce a maximum length.
+    new_value: value of the entry if the change is allowed
+    max_len_str: max length passed in from validatecommand ("9", "10", etc.)
+    """
+    if not (new_value.isdigit() or new_value == ""):
+        return False
+
+    max_len = int(max_len_str)
+    return len(new_value) <= max_len
+
+
+
 class MainApp(tk.Tk): #Initialize tkinter window
     def __init__(self):
         super().__init__()
         self.title("Library Management System")
         self.geometry("900x600")
+
+         # track logged-in user
+        self.current_user = None
+        self.current_card_id = None
+        self.is_librarian = False
 
         theme.apply_theme(self)  #Apply dark theme from theme.py
 
@@ -30,6 +49,9 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
     def show_frame(self, page_class):
         frame = self.frames[page_class]
+        # Allow pages to refresh based on user context
+        if hasattr(frame, "refresh_for_user"):
+            frame.refresh_for_user()
         frame.tkraise()
 
 #-------------------- Pages --------------------
@@ -156,7 +178,12 @@ class LoginPage(tk.Frame):
                 messagebox.showerror("Error", "Incorrect username or password.", parent=self)
                 return
 
-            # If we get here, login is valid → go to HomePage
+            # If we get here, login is valid → remember user and go to HomePage
+            self.controller.current_user = db_username
+            self.controller.current_card_id = db_card_id
+            # is_librarian is stored as 0/1 integer
+            self.controller.is_librarian = bool(is_librarian)
+
             self.controller.show_frame(HomePage)
 
         except Exception as e:
@@ -171,8 +198,11 @@ class SignUpPage(tk.Frame):
         super().__init__(parent, bg=theme.BG_COLOR)
         self.controller = controller
 
-        # validator for digits-only fields (SSN, Phone)
-        vcmd_digits = (self.register(self._validate_digits), "%P")
+        # validators for digits-only fields with length limits
+        vcmd_ssn = (self.register(validate_digits_with_limit), "%P", "9")
+        vcmd_phone = (self.register(validate_digits_with_limit), "%P", "10")
+
+
 
         # Centering container
         outer = tk.Frame(self, bg=theme.BG_COLOR)
@@ -245,7 +275,7 @@ class SignUpPage(tk.Frame):
             highlightbackground=theme.OUTLINE_COLOR,
             width=30,
             validate="key",
-            validatecommand=vcmd_digits
+            validatecommand=vcmd_ssn
         )
         self.ssn_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
 
@@ -287,8 +317,9 @@ class SignUpPage(tk.Frame):
             highlightbackground=theme.OUTLINE_COLOR,
             width=30,
             validate="key",
-            validatecommand=vcmd_digits
+            validatecommand=vcmd_phone
         )
+
         self.phone_entry.grid(row=5, column=1, sticky="w", padx=5, pady=5)
 
                 # Username
@@ -350,12 +381,6 @@ class SignUpPage(tk.Frame):
             command=lambda: controller.show_frame(LoginPage)
         ).grid(row=9, column=0, columnspan=2, pady=(5, 0), sticky="ew")
 
-    def _validate_digits(self, new_value: str) -> bool:
-        """
-        Allow only digits (or empty string) for SSN/Phone entries.
-        new_value is the would-be contents of the entry after the keypress.
-        """
-        return new_value.isdigit() or new_value == ""
 
     def handle_signup(self):
         import sqlite3
@@ -416,7 +441,14 @@ class SignUpPage(tk.Frame):
                 parent=self
             )
 
-            # Optionally redirect back to login
+            # Pre-fill login page with this username & password
+            login_page = self.controller.frames[LoginPage]
+            login_page.username_entry.delete(0, tk.END)
+            login_page.username_entry.insert(0, username)
+            login_page.password_entry.delete(0, tk.END)
+            login_page.password_entry.insert(0, password)
+
+            # Redirect back to login
             self.controller.show_frame(LoginPage)
 
         except Exception as e:
@@ -433,6 +465,7 @@ class SignUpPage(tk.Frame):
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
 
         # Centering container
         outer = tk.Frame(self, bg=theme.BG_COLOR)
@@ -458,29 +491,66 @@ class HomePage(tk.Frame):
             fg=theme.TEXT_MAIN
         ).pack(pady=(0, 5))
 
-        # Helper to create uniform wide buttons
+        # Helper to create buttons (we will pack them later in refresh_for_user)
         def nav_button(text, page):
-            btn = ttk.Button(
+            return ttk.Button(
                 content_frame,
                 text=text,
                 style="Accent.TButton",
                 command=lambda: controller.show_frame(page)
             )
-            btn.pack(fill="x", pady=6, ipady=3)
-            return btn
 
-        nav_button("🔍  Search Books", SearchPage)
-        nav_button("📚  Manage Loans", LoansPage)
-        nav_button("👤  Manage Borrowers", BorrowersPage)
-        nav_button("💸  Manage Fines", FinesPage)
+        # Store button references
+        self.btn_search = nav_button("🔍  Search Books", SearchPage)
+        self.btn_loans = nav_button("📚  Manage Loans", LoansPage)
+        self.btn_borrowers = nav_button("👤  Manage Borrowers", BorrowersPage)
+        self.btn_fines = nav_button("💸  Manage Fines", FinesPage)
 
-                # Logout button – return to Login page
-        ttk.Button(
+        # Logout button – clears user context and returns to Login page
+        self.btn_logout = ttk.Button(
             content_frame,
             text="Logout",
             style="Accent.TButton",
-            command=lambda: controller.show_frame(LoginPage)
-        ).pack(fill="x", pady=(12, 0), ipady=3)
+            command=self._handle_logout
+        )
+
+        # Initial layout based on current user (at app start: treated as borrower)
+        self.refresh_for_user()
+
+    def _handle_logout(self):
+        """Clear user context and go back to login."""
+        self.controller.current_user = None
+        self.controller.current_card_id = None
+        self.controller.is_librarian = False
+        self.controller.show_frame(LoginPage)
+
+    def refresh_for_user(self):
+        """
+        Show/hide admin buttons based on whether the current user is a librarian.
+        Called automatically from MainApp.show_frame(HomePage).
+        """
+        # Clear all button packing
+        for btn in (
+            self.btn_search,
+            self.btn_loans,
+            self.btn_borrowers,
+            self.btn_fines,
+            self.btn_logout,
+        ):
+            btn.pack_forget()
+
+        # Search is always visible
+        self.btn_search.pack(fill="x", pady=6, ipady=3)
+
+        # Only librarians see these
+        if self.controller.is_librarian:
+            self.btn_loans.pack(fill="x", pady=6, ipady=3)
+            self.btn_borrowers.pack(fill="x", pady=6, ipady=3)
+            self.btn_fines.pack(fill="x", pady=6, ipady=3)
+
+        # Logout always visible
+        self.btn_logout.pack(fill="x", pady=(12, 0), ipady=3)
+
 
 
         
