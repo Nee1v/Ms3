@@ -38,6 +38,16 @@ class HomePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
 
+        top_bar = tk.Frame(self, bg="#2e1a47", height=60)
+        top_bar.pack(fill="x")
+
+        tk.Label(top_bar,
+            text=" 📖 Magnesium Library 📖 ",
+            font=("Helvetica", 20, "bold"),
+            fg="white",
+            bg="#2e1a47"
+        ).pack(pady=10)
+
         # Centering container
         outer = tk.Frame(self, bg=theme.BG_COLOR)
         outer.pack(expand=True)
@@ -70,7 +80,7 @@ class HomePage(tk.Frame):
                 style="Accent.TButton",
                 command=lambda: controller.show_frame(page)
             )
-            btn.pack(fill="x", pady=6, ipady=3)
+            btn.pack(fill="x", pady=6, ipady=6)
             return btn
 
         nav_button("🔍  Search Books", SearchPage)
