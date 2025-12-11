@@ -3,11 +3,30 @@ from tkinter import ttk, messagebox
 import library_app as library  #Backend functions
 import theme #Theme module
 
+def validate_digits_with_limit(new_value: str, max_len_str: str) -> bool:
+    """
+    Allow only digits (or empty string) and enforce a maximum length.
+    new_value: value of the entry if the change is allowed
+    max_len_str: max length passed in from validatecommand ("9", "10", etc.)
+    """
+    if not (new_value.isdigit() or new_value == ""):
+        return False
+
+    max_len = int(max_len_str)
+    return len(new_value) <= max_len
+
+
+
 class MainApp(tk.Tk): #Initialize tkinter window
     def __init__(self):
         super().__init__()
         self.title("Library Management System")
         self.geometry("900x600")
+
+         # track logged-in user
+        self.current_user = None
+        self.current_card_id = None
+        self.is_librarian = False
 
         theme.apply_theme(self)  #Apply dark theme from theme.py
 
@@ -21,27 +40,393 @@ class MainApp(tk.Tk): #Initialize tkinter window
 
         #Dictionary to hold pages / frames
         self.frames = {}
-        for F in (HomePage, SearchPage, LoansPage, BorrowersPage, FinesPage):
+        for F in (LoginPage, SignUpPage, HomePage, SearchPage, LoansPage, BorrowersPage, FinesPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_frame(HomePage)
+        self.show_frame(LoginPage)
 
     def show_frame(self, page_class):
         frame = self.frames[page_class]
+        # Allow pages to refresh based on user context
+        if hasattr(frame, "refresh_for_user"):
+            frame.refresh_for_user()
         frame.tkraise()
 
 #-------------------- Pages --------------------
 
+class LoginPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
+
+        # Centering container
+        outer = tk.Frame(self, bg=theme.BG_COLOR)
+        outer.pack(expand=True)
+
+        # Card container
+        card = tk.Frame(
+            outer,
+            bg=theme.CARD_BG,
+            padx=30,
+            pady=30,
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        card.pack()
+
+        tk.Label(
+            card,
+            text="Login",
+            font=theme.FONT_TITLE,
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN
+        ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
+        tk.Label(
+            card,
+            text="Username:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        self.username_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.username_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="Password:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.password_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            show="*"
+        )
+        self.password_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+        ttk.Button(
+            card,
+            text="Login",
+            style="Accent.TButton",
+            command=self.handle_login
+        ).grid(row=3, column=0, columnspan=2, pady=(15, 5), sticky="ew")
+
+        ttk.Button(
+            card,
+            text="Sign Up",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(SignUpPage)
+        ).grid(row=4, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+
+    def handle_login(self):
+        import sqlite3
+
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not username or not password:
+            messagebox.showerror("Error", "Please enter both username and password.", parent=self)
+            return
+
+        try:
+            conn = sqlite3.connect("library.db")
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT username, password, card_id, is_librarian
+                FROM USERS
+                WHERE username = ?
+            """, (username,))
+            row = cur.fetchone()
+            conn.close()
+
+            if row is None:
+                messagebox.showerror("Error", "Incorrect username or password.", parent=self)
+                return
+
+            db_username, db_password, db_card_id, is_librarian = row
+
+            if password != db_password:
+                messagebox.showerror("Error", "Incorrect username or password.", parent=self)
+                return
+
+            self.controller.current_user = db_username
+            self.controller.current_card_id = db_card_id
+            self.controller.is_librarian = bool(is_librarian)
+            self.controller.show_frame(HomePage)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Database error during login:\n{e}", parent=self)
+
+
+class SignUpPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
+
+        vcmd_ssn = (self.register(validate_digits_with_limit), "%P", "9")
+        vcmd_phone = (self.register(validate_digits_with_limit), "%P", "10")
+
+        outer = tk.Frame(self, bg=theme.BG_COLOR)
+        outer.pack(expand=True)
+
+        card = tk.Frame(
+            outer,
+            bg=theme.CARD_BG,
+            padx=30,
+            pady=30,
+            highlightthickness=2,
+            highlightbackground=theme.OUTLINE_COLOR
+        )
+        card.pack()
+
+        tk.Label(
+            card,
+            text="Sign Up",
+            font=theme.FONT_TITLE,
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN
+        ).grid(row=0, column=0, columnspan=2, pady=(0, 10))
+
+        tk.Label(
+            card,
+            text="Enter the following:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MUTED,
+            font=theme.FONT_BODY
+        ).grid(row=1, column=0, columnspan=2, pady=(0, 10))
+
+        tk.Label(
+            card,
+            text="Full Name:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=2, column=0, sticky="e", padx=5, pady=5)
+        self.fullname_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.fullname_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="SSN:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=3, column=0, sticky="e", padx=5, pady=5)
+        self.ssn_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            validate="key",
+            validatecommand=vcmd_ssn
+        )
+        self.ssn_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="Address:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=4, column=0, sticky="e", padx=5, pady=5)
+        self.address_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.address_entry.grid(row=4, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="Phone:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=5, column=0, sticky="e", padx=5, pady=5)
+        self.phone_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            validate="key",
+            validatecommand=vcmd_phone
+        )
+        self.phone_entry.grid(row=5, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="Username:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=6, column=0, sticky="e", padx=5, pady=5)
+        self.username_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30
+        )
+        self.username_entry.grid(row=6, column=1, sticky="w", padx=5, pady=5)
+
+        tk.Label(
+            card,
+            text="Password:",
+            bg=theme.CARD_BG,
+            fg=theme.TEXT_MAIN,
+            font=theme.FONT_BODY
+        ).grid(row=7, column=0, sticky="e", padx=5, pady=5)
+        self.password_entry = tk.Entry(
+            card,
+            bg=theme.INPUT_BG,
+            fg=theme.INPUT_FG,
+            insertbackground=theme.INPUT_FG,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=theme.OUTLINE_COLOR,
+            width=30,
+            show="*"
+        )
+        self.password_entry.grid(row=7, column=1, sticky="w", padx=5, pady=5)
+
+        ttk.Button(
+            card,
+            text="Create Account",
+            style="Accent.TButton",
+            command=self.handle_signup
+        ).grid(row=8, column=0, columnspan=2, pady=(15, 5), sticky="ew")
+
+        ttk.Button(
+            card,
+            text="← Back to Login",
+            style="Accent.TButton",
+            command=lambda: controller.show_frame(LoginPage)
+        ).grid(row=9, column=0, columnspan=2, pady=(5, 0), sticky="ew")
+
+    def handle_signup(self):
+        import sqlite3
+
+        fullname = self.fullname_entry.get().strip()
+        ssn = self.ssn_entry.get().strip()
+        address = self.address_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not (fullname and ssn and address and phone and username and password):
+            messagebox.showerror("Error", "Please fill out all fields.", parent=self)
+            return
+
+        try:
+            conn = sqlite3.connect("library.db")
+            cur = conn.cursor()
+
+            cur.execute("SELECT 1 FROM USERS WHERE username = ?", (username,))
+            if cur.fetchone():
+                conn.close()
+                messagebox.showerror("Error", "Username is already taken.", parent=self)
+                return
+
+            cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
+            if cur.fetchone():
+                conn.close()
+                messagebox.showerror("Error", "An account with this SSN already exists.", parent=self)
+                return
+
+            cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
+            result = cur.fetchone()[0]
+            new_number = int(result) + 1 if result else 1
+            new_card_id = f"ID{new_number:06d}"
+
+            cur.execute("""
+                INSERT INTO BORROWER (card_id, Ssn, Bname, Address, Phone)
+                VALUES (?, ?, ?, ?, ?)
+            """, (new_card_id, ssn, fullname, address, phone))
+
+            cur.execute("""
+                INSERT INTO USERS (username, password, card_id, is_librarian)
+                VALUES (?, ?, ?, 0)
+            """, (username, password, new_card_id))
+
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo(
+                "Success",
+                f"Account created.\nYour Card ID: {new_card_id}",
+                parent=self
+            )
+
+            login_page = self.controller.frames[LoginPage]
+            login_page.username_entry.delete(0, tk.END)
+            login_page.username_entry.insert(0, username)
+            login_page.password_entry.delete(0, tk.END)
+            login_page.password_entry.insert(0, password)
+
+            self.controller.show_frame(LoginPage)
+
+        except Exception as e:
+            try:
+                conn.rollback()
+                conn.close()
+            except Exception:
+                pass
+            messagebox.showerror("Error", f"Database error during sign up:\n{e}", parent=self)
+
 class HomePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=theme.BG_COLOR)
+        self.controller = controller
 
         top_bar = tk.Frame(self, bg="#2e1a47", height=60)
         top_bar.pack(fill="x")
 
-        tk.Label(top_bar,
+        tk.Label(
+            top_bar,
             text=" 📖 Magnesium Library 📖 ",
             font=("Helvetica", 20, "bold"),
             fg="white",
@@ -72,21 +457,69 @@ class HomePage(tk.Frame):
             fg=theme.TEXT_MAIN
         ).pack(pady=(0, 5))
 
-        # Helper to create uniform wide buttons
+        # Helper to create buttons (we will pack them later in refresh_for_user)
         def nav_button(text, page):
-            btn = ttk.Button(
+            return ttk.Button(
                 content_frame,
                 text=text,
                 style="Accent.TButton",
                 command=lambda: controller.show_frame(page)
             )
-            btn.pack(fill="x", pady=6, ipady=6)
-            return btn
 
-        nav_button("🔍  Search Books", SearchPage)
-        nav_button("📚  Manage Loans", LoansPage)
-        nav_button("👤  Manage Borrowers", BorrowersPage)
-        nav_button("💸  Manage Fines", FinesPage)
+        # Store button references
+        self.btn_search = nav_button("🔍  Search Books", SearchPage)
+        self.btn_loans = nav_button("📚  Manage Loans", LoansPage)
+        self.btn_borrowers = nav_button("👤  Manage Borrowers", BorrowersPage)
+        self.btn_fines = nav_button("💸  Manage Fines", FinesPage)
+
+        # Logout button – clears user context and returns to Login page
+        self.btn_logout = ttk.Button(
+            content_frame,
+            text="Logout",
+            style="Accent.TButton",
+            command=self._handle_logout
+        )
+
+        # Initial layout based on current user (at app start)
+        self.refresh_for_user()
+
+    def _handle_logout(self):
+        """Clear user context and go back to login."""
+        self.controller.current_user = None
+        self.controller.current_card_id = None
+        self.controller.is_librarian = False
+        self.controller.show_frame(LoginPage)
+
+    def refresh_for_user(self):
+        """
+        Show/hide admin buttons based on whether the current user is a librarian.
+        Called automatically from MainApp.show_frame(HomePage).
+        """
+        # Clear all button packing
+        for btn in (
+            self.btn_search,
+            self.btn_loans,
+            self.btn_borrowers,
+            self.btn_fines,
+            self.btn_logout,
+        ):
+            btn.pack_forget()
+
+        # Search is always visible
+        self.btn_search.pack(fill="x", pady=6, ipady=3)
+
+        # Only librarians see these
+        if self.controller.is_librarian:
+            self.btn_loans.pack(fill="x", pady=6, ipady=3)
+            self.btn_borrowers.pack(fill="x", pady=6, ipady=3)
+            self.btn_fines.pack(fill="x", pady=6, ipady=3)
+
+        # Logout always visible
+        self.btn_logout.pack(fill="x", pady=(12, 0), ipady=3)
+
+
+
+        
 
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -164,7 +597,7 @@ class SearchPage(tk.Frame):
         self.tree.pack(fill="both", expand=True)
 
         self.tree.bind("<<TreeviewSelect>>", self.on_book_selected)
-        self.tree.bind("<Double-1>", lambda event:self.send_to_loans())
+        self.tree.bind("<Double-1>", self.on_tree_double_click)
 
     #Function that actually performs search is in library_app.py
     def perform_search(self):
@@ -224,6 +657,11 @@ class SearchPage(tk.Frame):
         # Give small visual feedback in title bar
         self.controller.title(f"Copied ISBN: {isbn_str}")
         self.after(1200, lambda: self.controller.title("Library Management System"))
+
+    def on_tree_double_click(self, event):
+        """Double-click copies the ISBN and jumps to the Loans page."""
+        self.copy_isbn_from_row(event)
+        self.send_to_loans()
 
     def send_to_loans(self):
         selected = self.tree.selection()
@@ -635,8 +1073,7 @@ class BorrowersPage(tk.Frame):
         address = self.address_entry.get().strip()
         phone = self.phone_entry.get().strip()
 
-
-        #1. Validate required fields (NOT NULL)
+        # 1. Validate required fields (NOT NULL)
         if not name or not ssn or not address:
             self.status_label.config(
                 text="Error: Name, SSN, and Address are required.",
@@ -649,7 +1086,7 @@ class BorrowersPage(tk.Frame):
             conn = sqlite3.connect("library.db")
             cur = conn.cursor()
 
-            #2. Enforce ONE borrower per SSN
+            # 2. Enforce ONE borrower per SSN
             cur.execute("SELECT card_id FROM BORROWER WHERE ssn = ?", (ssn,))
             if cur.fetchone():
                 self.status_label.config(
@@ -659,26 +1096,36 @@ class BorrowersPage(tk.Frame):
                 conn.close()
                 return
 
-            #3. Auto-generate new card_id in the format ID000001
+            # 3. Auto-generate new card_id in the format ID000001
             cur.execute("SELECT MAX(CAST(SUBSTR(card_id, 3) AS INTEGER)) FROM BORROWER")
             result = cur.fetchone()[0]
             new_number = int(result) + 1 if result else 1
             new_card_id = f"ID{new_number:06d}"  # ID + 6-digit zero-padded number
 
-            #4. Insert new borrower
+            # 4. Insert new borrower
             cur.execute("""
                 INSERT INTO BORROWER (card_id, bname, address, phone, ssn)
                 VALUES (?, ?, ?, ?, ?)
             """, (new_card_id, name, address, phone, ssn))
 
+            # 5. Also create a login in USERS:
+            #    username = card_id, password = SSN, is_librarian = 0
+            cur.execute("""
+                INSERT INTO USERS (username, password, card_id, is_librarian)
+                VALUES (?, ?, ?, 0)
+            """, (new_card_id, ssn, new_card_id))
+
             conn.commit()
             conn.close()
 
-            # 5. Success message + clear form
+            # 6. Success message + clear form
             self.last_card_id = new_card_id
 
             self.status_label.config(
-                text=f"Borrower created successfully. Card No: {new_card_id} (click to copy)",
+                text=(
+                    f"Borrower created successfully. Card No: {new_card_id} (click to copy). "
+                    f"Login Username: {new_card_id}, Password: {ssn}"
+                ),
                 fg="green"
             )
 
@@ -688,7 +1135,6 @@ class BorrowersPage(tk.Frame):
                 loans_page.card_entry.delete(0, tk.END)
                 loans_page.card_entry.insert(0, new_card_id)
             except Exception:
-                # if LoansPage not initialized for some reason, just ignore
                 pass
             
             # prefill card id in FinesPage if possible
@@ -709,6 +1155,7 @@ class BorrowersPage(tk.Frame):
                 text=f"Database Error: {str(e)}",
                 fg="red"
             )
+
 
     def copy_card_to_clipboard(self, event=None):
         """Copy the last created Card ID to the clipboard when the status label is clicked."""
