@@ -123,6 +123,10 @@ class LoginPage(tk.Frame):
         )
         self.password_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
 
+        # press enter to go to pass word entry, then press enter to login
+        self.username_entry.bind("<Return>", lambda event: self.password_entry.focus_set())
+        self.password_entry.bind("<Return>", lambda event: self.handle_login())
+
         ttk.Button(
             card,
             text="Login",
@@ -332,6 +336,13 @@ class SignUpPage(tk.Frame):
             show="*"
         )
         self.password_entry.grid(row=7, column=1, sticky="w", padx=5, pady=5)
+
+        # press enter to go to next entry field
+        self.fullname_entry.bind("<Return>", lambda event: self.ssn_entry.focus_set())
+        self.ssn_entry.bind("<Return>", lambda event: self.address_entry.focus_set())
+        self.address_entry.bind("<Return>", lambda event: self.phone_entry.focus_set())
+        self.phone_entry.bind("<Return>", lambda event: self.username_entry.focus_set())
+        self.username_entry.bind("<Return>", lambda event: self.password_entry.focus_set())
 
         ttk.Button(
             card,
@@ -1057,6 +1068,11 @@ class BorrowersPage(tk.Frame):
             validatecommand=vcmd_phone
         )
         self.phone_entry.grid(row=3, column=1, pady=5)
+
+        # press enter to go to next entry field
+        self.name_entry.bind("<Return>", lambda event: self.ssn_entry.focus_set())
+        self.ssn_entry.bind("<Return>", lambda event: self.address_entry.focus_set())
+        self.address_entry.bind("<Return>", lambda event: self.phone_entry.focus_set())
 
         # --- Buttons ---
         ttk.Button(
