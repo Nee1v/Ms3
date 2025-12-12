@@ -674,7 +674,6 @@ class SearchPage(tk.Frame):
 
     def on_tree_double_click(self, event):
         """Double-click copies the ISBN and jumps to the Loans page."""
-        self.copy_isbn_from_row(event)
         self.send_to_loans()
 
     def send_to_loans(self):
@@ -1248,6 +1247,7 @@ class FinesPage(tk.Frame):
             highlightbackground=theme.OUTLINE_COLOR
         )
         self.card_entry.grid(row=0, column=1, pady=5)
+        self.card_entry.bind("<Return>", lambda event: self.search_fines())
 
         tk.Label(
             search_frame,
@@ -1266,6 +1266,7 @@ class FinesPage(tk.Frame):
             highlightbackground=theme.OUTLINE_COLOR
         )
         self.name_entry.grid(row=0, column=3, pady=5)
+        self.name_entry.bind("<Return>", lambda event: self.search_fines())
 
         ttk.Button(
             search_frame,
