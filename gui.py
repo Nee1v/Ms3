@@ -952,6 +952,10 @@ class BorrowersPage(tk.Frame):
         self.controller = controller
         self.last_card_id = None # To track last created borrower
 
+        # validation commands for SSN (9 digits) and Phone (10 digits)
+        vcmd_ssn = (self.register(validate_digits_with_limit), "%P", "9")
+        vcmd_phone = (self.register(validate_digits_with_limit), "%P", "10")
+
         # Top bar
         topBar = tk.Frame(self, bg=theme.BG_COLOR)
         topBar.pack(fill="x", pady=10, padx=10)
@@ -1010,7 +1014,9 @@ class BorrowersPage(tk.Frame):
             insertbackground=theme.INPUT_FG,
             relief="flat",
             highlightthickness=1,
-            highlightbackground=theme.OUTLINE_COLOR
+            highlightbackground=theme.OUTLINE_COLOR,
+            validate="key",
+            validatecommand=vcmd_ssn
         )
         self.ssn_entry.grid(row=1, column=1, pady=5)
 
@@ -1046,7 +1052,9 @@ class BorrowersPage(tk.Frame):
             insertbackground=theme.INPUT_FG,
             relief="flat",
             highlightthickness=1,
-            highlightbackground=theme.OUTLINE_COLOR
+            highlightbackground=theme.OUTLINE_COLOR,
+            validate="key",
+            validatecommand=vcmd_phone
         )
         self.phone_entry.grid(row=3, column=1, pady=5)
 
